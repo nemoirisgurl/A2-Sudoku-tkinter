@@ -1,0 +1,44 @@
+import tkinter as tk
+
+grid_size = 9
+mini_grid_size = 3
+entries = {}
+
+def validate_input(char):
+    # Allow only one digit (0-9) per cell
+    if char.isdigit() and len(char) == 1:
+        return True
+    elif char == "":
+        return True  # Allow clearing the entry
+    return False
+
+def create_grid():
+    # Create a frame to center the grid
+    frame = tk.Frame(root)
+    frame.pack(expand=True)
+    
+    vcmd = (root.register(validate_input), "%P")  # Register the validation function
+    
+    for i in range(grid_size):
+        for j in range(grid_size):
+            # Alternate color based on 3x3 grid sections
+            if (i // mini_grid_size + j // mini_grid_size) % 2 == 0:
+                entry_color = "light yellow"
+            else:
+                entry_color = "light blue"
+                
+            entry = tk.Entry(frame, bg=entry_color, width=3, justify="center", font=("Arial", 18), validate="key", validatecommand=vcmd)
+            entry.grid(row=i, column=j, padx=4, pady=4)  # Add some padding for spacing
+            entries[(i, j)] = entry  # Store the entry widget for later use
+    
+def main():
+    create_grid()
+
+# Create the main window
+root = tk.Tk()
+root.geometry("500x500")
+root.title("Sudoku Solver")
+
+if __name__ == "__main__":
+    main()
+    root.mainloop()
