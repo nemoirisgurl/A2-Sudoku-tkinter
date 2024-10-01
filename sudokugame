@@ -1,43 +1,57 @@
 import tkinter as tk
+import random
 
 grid_size = 9
 mini_grid_size = 3
 entries = {}
 
 def validate_input(char):
-    # Allow only one digit (0-9) per cell
-    if char.isdigit() and len(char) == 1:
+    # Allow only ตัวเลข 1-9
+    if char.isdigit() and 1 <= int(char) <= 9:
         return True
     elif char == "":
         return True  # Allow clearing the entry
     return False
 
 def create_grid():
-    # Create a frame to center the grid
+    # สร้างตาราง Sudoku 9x9
     frame = tk.Frame(root)
     frame.pack(expand=True)
     
-    vcmd = (root.register(validate_input), "%P")  # Register the validation function
+    vcmd = (root.register(validate_input), "%P")  # Register ฟังก์ชั่นสำหรับ Validate
     
     for i in range(grid_size):
         for j in range(grid_size):
-            # Alternate color based on 3x3 grid sections
+            # แยกสีตามบล็อก 3x3
             if (i // mini_grid_size + j // mini_grid_size) % 2 == 0:
-                entry_color = "light yellow"
-            else:
                 entry_color = "light blue"
+            else:
+                entry_color = "light yellow"
                 
             entry = tk.Entry(frame, bg=entry_color, width=3, justify="center", font=("Arial", 18), validate="key", validatecommand=vcmd)
-            entry.grid(row=i, column=j, padx=4, pady=4)  # Add some padding for spacing
-            entries[(i, j)] = entry  # Store the entry widget for later use
-    
+            entry.grid(row=i, column=j, padx=4, pady=4)  # เพิ่ม Padding สำหรับระยะห่าง
+            entries[(i, j)] = entry  # บันทึก Entry widget
+
+def randomize_3x3_blocks():
+    # สุ่มตัวเลขในแต่ละบล็อก 3x3
+    for block_row in range(0, grid_size, mini_grid_size):
+        for block_col in range(0, grid_size, mini_grid_size):
+            # สุ่มตัวเลข 1-9 โดยไม่ซ้ำกันในแต่ละบล็อกย่อย 3x3
+            random_numbers = random.sample(range(1, 10), 9)
+            idx = 0
+            for i in range(mini_grid_size):
+                for j in range(mini_grid_size):
+                    entries[(block_row + i, block_col + j)].insert(0, random_numbers[idx])
+                    idx += 1
+
 def main():
     create_grid()
+    randomize_3x3_blocks()
 
-# Create the main window
+# สร้างหน้าต่างหลักของโปรแกรม
 root = tk.Tk()
 root.geometry("500x500")
-root.title("Sudoku Solver")
+root.title("Sudoku Game")
 
 if __name__ == "__main__":
     main()
