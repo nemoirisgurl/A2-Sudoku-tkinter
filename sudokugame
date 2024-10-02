@@ -13,13 +13,12 @@ def validate_input(char):
         return True  # Allow clearing the entry
     return False
 
+
 def create_grid():
     # Create a 9x9 Sudoku grid
     frame = tk.Frame(root)
     frame.pack(expand=True)
-    
     vcmd = (root.register(validate_input), "%P")  # Register validation function
-    
     for i in range(grid_size):
         for j in range(grid_size):
             # Alternate colors based on 3x3 blocks
@@ -27,10 +26,10 @@ def create_grid():
                 entry_color = "light yellow"
             else:
                 entry_color = "light blue"
-                
             entry = tk.Entry(frame, bg=entry_color, width=3, justify="center", font=("Arial", 18), validate="key", validatecommand=vcmd)
             entry.grid(row=i, column=j, padx=4, pady=4)  # Add padding for spacing
             entries[(i, j)] = entry  # Store Entry widget
+
 
 def check_possible_num(num, row, col):
     # Check if the number can be placed in the (row, col) position
@@ -48,9 +47,11 @@ def check_possible_num(num, row, col):
                 return False
     return True
 
+
 def is_empty(row, col):
     # Check if a given cell is empty
     return entries[(row, col)].get() == ""
+
 
 def find_empty_spot():
     # Find the first empty spot in the grid
@@ -60,37 +61,46 @@ def find_empty_spot():
                 return (row, col)
     return None  # No empty spots
 
+
 def fill_grid():
     # Recursive function to fill the grid using backtracking
     empty_spot = find_empty_spot()
     if not empty_spot:
         return True  # Grid is fully filled
-    
     row, col = empty_spot
     possible_num = list(range(1, 10))
     random.shuffle(possible_num)  # Shuffle to add randomness
-    
     for num in possible_num:
         if check_possible_num(num, row, col):
             entries[(row, col)].delete(0, tk.END)
             entries[(row, col)].insert(0, num)
-            
             if fill_grid():  # Recursively fill the next spot
                 return True
-            
             # If filling with this number doesn't work, backtrack
             entries[(row, col)].delete(0, tk.END)
-    
     return False  # Trigger backtracking
+
+
+def remove_numbers():## Remove 15-60 numbers
+    num_to_remove = random.randint(15, 60)
+    all_cells = [(i, j) for i in range(grid_size) for j in range(grid_size)]
+    random.shuffle(all_cells)  # Shuffle to randomly pick cells to clear
+    # Remove numbers from a random set of cells
+    for i in range(num_to_remove):
+        row, col = all_cells[i]
+        entries[(row, col)].delete(0, tk.END)
+
 
 def main():
     create_grid()
     fill_grid()
+    remove_numbers()
 
 # Create the main window for the application
 root = tk.Tk()
 root.geometry("500x500")
-root.title("Sudoku Game")
+root.title("SudokuGame")
+
 
 if __name__ == "__main__":
     main()
