@@ -6,7 +6,7 @@ mini_grid_size = 3
 entries = {}
 
 def validate_input(char):
-    # Allow only ตัวเลข 1-9
+    # Allow only numbers 1-9
     if char.isdigit() and 1 <= int(char) <= 9:
         return True
     elif char == "":
@@ -14,41 +14,80 @@ def validate_input(char):
     return False
 
 def create_grid():
-    # สร้างตาราง Sudoku 9x9
+    # Create a 9x9 Sudoku grid
     frame = tk.Frame(root)
     frame.pack(expand=True)
     
-    vcmd = (root.register(validate_input), "%P")  # Register ฟังก์ชั่นสำหรับ Validate
+    vcmd = (root.register(validate_input), "%P")  # Register validation function
     
     for i in range(grid_size):
         for j in range(grid_size):
-            # แยกสีตามบล็อก 3x3
+            # Alternate colors based on 3x3 blocks
             if (i // mini_grid_size + j // mini_grid_size) % 2 == 0:
-                entry_color = "light blue"
-            else:
                 entry_color = "light yellow"
+            else:
+                entry_color = "light blue"
                 
             entry = tk.Entry(frame, bg=entry_color, width=3, justify="center", font=("Arial", 18), validate="key", validatecommand=vcmd)
-            entry.grid(row=i, column=j, padx=4, pady=4)  # เพิ่ม Padding สำหรับระยะห่าง
-            entries[(i, j)] = entry  # บันทึก Entry widget
+            entry.grid(row=i, column=j, padx=4, pady=4)  # Add padding for spacing
+            entries[(i, j)] = entry  # Store Entry widget
 
-def randomize_3x3_blocks():
-    # สุ่มตัวเลขในแต่ละบล็อก 3x3
-    for block_row in range(0, grid_size, mini_grid_size):
-        for block_col in range(0, grid_size, mini_grid_size):
-            # สุ่มตัวเลข 1-9 โดยไม่ซ้ำกันในแต่ละบล็อกย่อย 3x3
-            random_numbers = random.sample(range(1, 10), 9)
-            idx = 0
-            for i in range(mini_grid_size):
-                for j in range(mini_grid_size):
-                    entries[(block_row + i, block_col + j)].insert(0, random_numbers[idx])
-                    idx += 1
+def check_possible_num(num, row, col):
+    # Check if the number can be placed in the (row, col) position
+    for j in range(grid_size):
+        if entries[(row, j)].get() == str(num):
+            return False
+    for i in range(grid_size):
+        if entries[(i, col)].get() == str(num):
+            return False 
+    start_row = (row // mini_grid_size) * mini_grid_size
+    start_col = (col // mini_grid_size) * mini_grid_size
+    for i in range(mini_grid_size):
+        for j in range(mini_grid_size):
+            if entries[(start_row + i, start_col + j)].get() == str(num):
+                return False
+    return True
+
+def is_empty(row, col):
+    # Check if a given cell is empty
+    return entries[(row, col)].get() == ""
+
+def find_empty_spot():
+    # Find the first empty spot in the grid
+    for row in range(grid_size):
+        for col in range(grid_size):
+            if is_empty(row, col):
+                return (row, col)
+    return None  # No empty spots
+
+def fill_grid():
+    # Recursive function to fill the grid using backtracking
+    empty_spot = find_empty_spot()
+    if not empty_spot:
+        return True  # Grid is fully filled
+    
+    row, col = empty_spot
+    possible_num = list(range(1, 10))
+    random.shuffle(possible_num)  # Shuffle to add randomness
+    
+    for num in possible_num:
+        if check_possible_num(num, row, col):
+            entries[(row, col)].delete(0, tk.END)
+            entries[(row, col)].insert(0, num)
+            
+            if fill_grid():  # Recursively fill the next spot
+                return True
+            
+            # If filling with this number doesn't work, backtrack
+            entries[(row, col)].delete(0, tk.END)
+    
+    return False  # Trigger backtracking
 
 def main():
     create_grid()
-    randomize_3x3_blocks()
+    fill_grid()
 
-# สร้างหน้าต่างหลักของโปรแกรม
+# Create the main window for the application
 root = tk.Tk()
 root.geometry("500x500")
 root.title("Sudoku Game")
