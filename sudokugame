@@ -81,8 +81,8 @@ def fill_grid():
     return False  # Trigger backtracking
 
 
-def remove_numbers():  # Remove 15-60 numbers
-    num_to_remove = random.randint(15, 60)
+def remove_numbers():  # Remove 20-60 numbers
+    num_to_remove = random.randint(20, 60)
     all_cells = [(i, j) for i in range(grid_size) for j in range(grid_size)]
     random.shuffle(all_cells)  # Shuffle to randomly pick cells to clear
     # Remove numbers from a random set of cells
@@ -107,6 +107,11 @@ def reset_grid():
             entries[(row, col)].config(state="normal")  # Make editable
             entries[(row, col)].delete(0, tk.END)
 
+def instruction():
+    # Show game instruction
+    instruction = tk.Label(root, text="Instruction \n"
+                           "Fill numbers in the grid so that each row, column, and 3x3 block contains the numbers 1-9")
+    instruction.pack(pady= 10) 
 
 def new_game():
     # Reset the grid and generate a new Sudoku puzzle
@@ -115,9 +120,18 @@ def new_game():
     remove_numbers()
 
 
+def reset_game(): 
+    # Create a new game button
+    reset_button = tk.Button(root, text="New game", font=("Arial, 16"), command=new_game)
+    reset_button.pack(pady= 20)
+
+
 def main():
+    # Main function of Sudoku game
     create_grid()
     new_game()
+    instruction()
+    reset_game()
 
 # Create the main window for the application
 root = tk.Tk()
