@@ -2,10 +2,10 @@ import tkinter as tk
 from tkinter import messagebox
 import random
 
-
 grid_size = 9
 mini_grid_size = 3
 entries = {}
+answers_grid = [[0] * grid_size for _ in range(grid_size)]  # Store original grid
 
 
 def validate_input(char):
@@ -25,14 +25,11 @@ def create_grid():
     for i in range(grid_size):
         for j in range(grid_size):
             # Alternate colors based on 3x3 blocks
-            if (i // mini_grid_size + j // mini_grid_size) % 2 == 0:
-                entry_color = "light yellow"
-            else:
-                entry_color = "light blue"
+            entry_color = "light yellow" if (i // mini_grid_size + j // mini_grid_size) % 2 == 0 else "light blue"
             top_border = 6 if i % mini_grid_size == 0 else 1
             left_border = 6 if j % mini_grid_size == 0 else 1
             bottom_border = 6 if i == grid_size - 1 else 1
-            right_border = 6 if j == grid_size - 1 else 1                     
+            right_border = 6 if j == grid_size - 1 else 1
             entry = tk.Entry(frame, bg=entry_color, width=3, justify="center", font=("Arial", 18), validate="key", validatecommand=vcmd)
             entry.grid(row=i, column=j, padx=(left_border, right_border), pady=(top_border, bottom_border))
             entries[(i, j)] = entry  # Store Entry widget
@@ -81,15 +78,17 @@ def fill_grid():
         if check_possible_num(num, row, col):
             entries[(row, col)].delete(0, tk.END)
             entries[(row, col)].insert(0, num)
+            answers_grid[row][col] = num  # Store the number in the answers grid
             if fill_grid():  # Recursively fill the next spot
                 return True
             # If filling with this number doesn't work, backtrack
             entries[(row, col)].delete(0, tk.END)
+            answers_grid[row][col] = 0  # Clear the answer in case of backtrack
     return False  # Trigger backtracking
 
 
 def remove_numbers():  # Remove 20-60 numbers
-    num_to_remove = random.randint(1, 2)
+    num_to_remove = random.randint(20, 60)
     all_cells = [(i, j) for i in range(grid_size) for j in range(grid_size)]
     random.shuffle(all_cells)  # Shuffle to randomly pick cells to clear
     # Remove numbers from a random set of cells
@@ -145,26 +144,38 @@ def check_win():
 def check_completion():
     # Check if the puzzle is complete and display win message
     if check_win():
-        messagebox.showinfo("You solved the puzzle!")
+        messagebox.showinfo("Victory", "You solved the puzzle!")
         new_game()
 
 
-def on_entry_change():
+def on_entry_change(event):
     # Check if the puzzle is complete after every change
     check_completion()
 
 
 def instruction():
     # Show game instruction
-    instruction = tk.Label(root, text="Instruction \n"
+    instruction_label = tk.Label(root, text="Instruction \n"
                            "Fill numbers in the grid so that each row, column, and 3x3 block contains the numbers 1-9")
-    instruction.pack(pady=10)
+    instruction_label.pack(pady=10)
 
 
 def reset_game():
     # Create a new game button
-    reset_button = tk.Button(root, text="New game", font=("Arial, 16"), command=new_game)
-    reset_button.pack(pady=20)
+    reset_button = tk.Button(root, text="New game", font=("Arial", 16), command=new_game)
+    reveal_button = tk.Button(root, text="Reveal", font=("Arial", 16), command=reveal_grid)
+    reset_button.pack(padx=20)
+    reveal_button.pack(padx=20)
+
+
+def reveal_grid():
+    # Reveal correct answer
+    for row in range(grid_size):
+        for col in range(grid_size):
+            entries[(row, col)].config(state="normal")  # Make editable
+            entries[(row, col)].delete(0, tk.END)
+            entries[(row, col)].insert(0, answers_grid[row][col])  # Insert the original number
+            entries[(row, col)].config(state="readonly")  # Lock after revealing
 
 
 def bind_entry_events():
@@ -192,10 +203,9 @@ def main():
 # Create the main window for the application
 root = tk.Tk()
 root.geometry("600x600")
-root.title("SudokuGame")
+root.title("Sudoku Game")
 
 
 if __name__ == "__main__":
     main()
     root.mainloop()
-
