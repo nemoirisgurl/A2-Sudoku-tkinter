@@ -1,9 +1,12 @@
 import tkinter as tk
+from tkinter import messagebox
 import random
+
 
 grid_size = 9
 mini_grid_size = 3
 entries = {}
+
 
 def validate_input(char):
     # Allow only numbers 1-9
@@ -26,8 +29,12 @@ def create_grid():
                 entry_color = "light yellow"
             else:
                 entry_color = "light blue"
+            top_border = 6 if i % mini_grid_size == 0 else 1
+            left_border = 6 if j % mini_grid_size == 0 else 1
+            bottom_border = 6 if i == grid_size - 1 else 1
+            right_border = 6 if j == grid_size - 1 else 1                     
             entry = tk.Entry(frame, bg=entry_color, width=3, justify="center", font=("Arial", 18), validate="key", validatecommand=vcmd)
-            entry.grid(row=i, column=j, padx=4, pady=4)  # Add padding for spacing
+            entry.grid(row=i, column=j, padx=(left_border, right_border), pady=(top_border, bottom_border))
             entries[(i, j)] = entry  # Store Entry widget
 
 
@@ -82,7 +89,7 @@ def fill_grid():
 
 
 def remove_numbers():  # Remove 20-60 numbers
-    num_to_remove = random.randint(20, 60)
+    num_to_remove = random.randint(1, 2)
     all_cells = [(i, j) for i in range(grid_size) for j in range(grid_size)]
     random.shuffle(all_cells)  # Shuffle to randomly pick cells to clear
     # Remove numbers from a random set of cells
@@ -107,23 +114,72 @@ def reset_grid():
             entries[(row, col)].config(state="normal")  # Make editable
             entries[(row, col)].delete(0, tk.END)
 
+
+def check_win():
+    # Check if the current grid is a valid Sudoku solution
+    for row in range(grid_size):
+        row_nums = set()
+        col_nums = set()
+        for col in range(grid_size):
+            row_val = entries[(row, col)].get()
+            col_val = entries[(col, row)].get()
+            if row_val == "" or col_val == "":
+                return False  # Grid is not complete
+            if row_val in row_nums or col_val in col_nums:
+                return False  # Duplicates in row or column
+            row_nums.add(row_val)
+            col_nums.add(col_val)
+    # Check 3x3 blocks
+    for block_row in range(0, grid_size, mini_grid_size):
+        for block_col in range(0, grid_size, mini_grid_size):
+            block_nums = set()
+            for i in range(mini_grid_size):
+                for j in range(mini_grid_size):
+                    block_val = entries[(block_row + i, block_col + j)].get()
+                    if block_val in block_nums:
+                        return False  # Duplicates in block
+                    block_nums.add(block_val)
+    return True
+
+
+def check_completion():
+    # Check if the puzzle is complete and display win message
+    if check_win():
+        messagebox.showinfo("You solved the puzzle!")
+        new_game()
+
+
+def on_entry_change():
+    # Check if the puzzle is complete after every change
+    check_completion()
+
+
 def instruction():
     # Show game instruction
     instruction = tk.Label(root, text="Instruction \n"
                            "Fill numbers in the grid so that each row, column, and 3x3 block contains the numbers 1-9")
-    instruction.pack(pady= 10) 
+    instruction.pack(pady=10)
+
+
+def reset_game():
+    # Create a new game button
+    reset_button = tk.Button(root, text="New game", font=("Arial, 16"), command=new_game)
+    reset_button.pack(pady=20)
+
+
+def bind_entry_events():
+    # Bind key release event to each entry widget to check for completion
+    for row in range(grid_size):
+        for col in range(grid_size):
+            entries[(row, col)].bind("<KeyRelease>", on_entry_change)
+
 
 def new_game():
     # Reset the grid and generate a new Sudoku puzzle
     reset_grid()
     fill_grid()
     remove_numbers()
-
-
-def reset_game(): 
-    # Create a new game button
-    reset_button = tk.Button(root, text="New game", font=("Arial, 16"), command=new_game)
-    reset_button.pack(pady= 20)
+    bind_entry_events()
 
 
 def main():
