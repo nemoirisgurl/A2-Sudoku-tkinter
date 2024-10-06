@@ -18,10 +18,8 @@ def validate_input(char):
     return False
 
 
-def create_grid():
+def create_grid(parent):
     # Create a 9x9 Sudoku grid
-    frame = tk.Frame(root)
-    frame.pack(expand=True)
     vcmd = (root.register(validate_input), "%P")  # Register validation function
     for i in range(grid_size):
         for j in range(grid_size):
@@ -31,7 +29,7 @@ def create_grid():
             left_border = 6 if j % mini_grid_size == 0 else 1
             bottom_border = 6 if i == grid_size - 1 else 1
             right_border = 6 if j == grid_size - 1 else 1
-            entry = tk.Entry(frame, bg=entry_color, width=3, justify="center", font=("Arial", 18), validate="key", validatecommand=vcmd)
+            entry = tk.Entry(parent, bg=entry_color, width=3, justify="center", font=("Arial", 18), validate="key", validatecommand=vcmd)
             entry.grid(row=i, column=j, padx=(left_border, right_border), pady=(top_border, bottom_border))
             entries[(i, j)] = entry  # Store Entry widget
 
@@ -160,9 +158,11 @@ def on_entry_change(event):
 
 def instruction():
     # Show game instruction
-    instruction_label = tk.Label(root, text="Instruction \n"
-                           "Fill numbers in the grid so that each row, column, and 3x3 block contains the numbers 1-9")
-    instruction_label.pack(pady=10)
+    messagebox.showinfo("Instruction","How to play Sudoku\n"
+    "1. Fill in the grid so that each row, column, and 3x3 block contains the numbers 1-9.\n"
+    "2. You can only place numbers 1-9 in each empty cell\n"
+    "3. You cannot edit cells that locked\n"
+    "                                  Have fun!                                            ")
 
 
 def save_game():
@@ -229,16 +229,18 @@ def load_game():
         messagebox.showerror("Load Game", f"An error occurred while loading: {e}")
 
 
-def game_button():
+def game_button(parent):
     # Create game buttons (New game, Reveal answers, Save game, Load game)
-    reset_button = tk.Button(root, text="New game", font=("Arial", 16), command=new_game)
-    reveal_button = tk.Button(root, text="Reveal", font=("Arial", 16), command=reveal_grid)
-    save_button = tk.Button(root, text="Save game", font=("Arial", 16), command=save_game)
-    load_button = tk.Button(root, text="Load game", font=("Arial", 16), command=load_game)
-    reset_button.pack(padx=20)
-    reveal_button.pack(padx=20)
-    save_button.pack(padx=20)
-    load_button.pack(padx=20)
+    reset_button = tk.Button(parent, text="New game", font=("Arial", 16), command=new_game)
+    reveal_button = tk.Button(parent, text="Reveal", font=("Arial", 16), command=reveal_grid)
+    save_button = tk.Button(parent, text="Save game", font=("Arial", 16), command=save_game)
+    load_button = tk.Button(parent, text="Load game", font=("Arial", 16), command=load_game)
+    instruction_button = tk.Button(parent, text="Instruction", font=("Arial", 16), command=instruction)
+    reset_button.pack(padx=10, pady=10, anchor="center", expand=True)
+    reveal_button.pack(padx=10, pady=10, anchor="center", expand=True)
+    save_button.pack(padx=10, pady=10, anchor="center", expand=True)
+    load_button.pack(padx=10, pady=10, anchor="center", expand=True)
+    instruction_button.pack(padx=10, pady=10, anchor="center", expand=True)
 
 
 
@@ -258,7 +260,7 @@ def bind_entry_events():
         for col in range(grid_size):
             entries[(row, col)].bind("<KeyRelease>", on_entry_change)
 
-
+    
 def new_game():
     # Reset the grid and generate a new Sudoku puzzle
     reset_grid()
@@ -273,14 +275,19 @@ def new_game():
 
 def main():
     # Main function of Sudoku game
-    create_grid()
-    new_game()
-    instruction()
-    game_button()
+    sudoku = tk.Label(root, text="Sudoku", font=("Arial, 48"))
+    sudoku.pack(pady= 10)
+    left_frame = tk.Frame(root)
+    right_frame = tk.Frame(root)
+    left_frame.pack(side="left", padx=75)
+    right_frame.pack(side="right", padx=50)
+    # Set up the grid and buttons
+    create_grid(left_frame)
+    game_button(right_frame)
 
 # Create the main window for the application
 root = tk.Tk()
-root.geometry("600x600")
+root.geometry("800x500")
 root.title("Sudoku Game")
 
 
