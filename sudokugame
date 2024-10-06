@@ -7,7 +7,7 @@ mini_grid_size = 3
 entries = {}
 answers_grid = [[0] * grid_size for _ in range(grid_size)]  # Store original grid
 editable_grid = [[0] * grid_size for _ in range(grid_size)]  # Track editable states (0 = editable, 1 = read-only)
-
+is_revealed = False
 
 def validate_input(char):
     # Allow only numbers 1-9
@@ -25,11 +25,11 @@ def create_grid(parent):
         for j in range(grid_size):
             # Alternate colors based on 3x3 blocks
             entry_color = "light yellow" if (i // mini_grid_size + j // mini_grid_size) % 2 == 0 else "light blue"
-            top_border = 6 if i % mini_grid_size == 0 else 1
+            top_border = 6 if i % mini_grid_size == 0 else 1 # Highlight
             left_border = 6 if j % mini_grid_size == 0 else 1
             bottom_border = 6 if i == grid_size - 1 else 1
             right_border = 6 if j == grid_size - 1 else 1
-            entry = tk.Entry(parent, bg=entry_color, width=3, justify="center", font=("Arial", 18), validate="key", validatecommand=vcmd)
+            entry = tk.Entry(parent, bg=entry_color, width=3, justify="center", font=("Arial", 24), validate="key", validatecommand=vcmd)
             entry.grid(row=i, column=j, padx=(left_border, right_border), pady=(top_border, bottom_border))
             entries[(i, j)] = entry  # Store Entry widget
 
@@ -86,7 +86,8 @@ def fill_grid():
     return False  # Trigger backtracking
 
 
-def remove_numbers():  # Remove 20-60 numbers
+def remove_numbers():  
+    # Remove 20-60 numbers from grid
     num_to_remove = random.randint(20, 60)
     all_cells = [(i, j) for i in range(grid_size) for j in range(grid_size)]
     random.shuffle(all_cells)  # Shuffle to randomly pick cells to clear
@@ -114,7 +115,16 @@ def reset_grid():
     for row in range(grid_size):
         for col in range(grid_size):
             entries[(row, col)].config(state="normal")  # Make editable
-            entries[(row, col)].delete(0, tk.END)
+            entries[(row, col)].delete(0, tk.END)      
+
+
+def is_grid_empty():
+    # Check if all cells are empty
+    for row in range(grid_size):
+        for col in range(grid_size):
+            if entries[(row, col)].get() != "":
+                return False
+    return True
 
 
 def check_win():
@@ -156,7 +166,7 @@ def on_entry_change(event):
     check_completion()
 
 
-def instruction():
+def instruction(): 
     # Show game instruction
     messagebox.showinfo("Instruction","How to play Sudoku\n"
     "1. Fill in the grid so that each row, column, and 3x3 block contains the numbers 1-9.\n"
@@ -165,7 +175,11 @@ def instruction():
     "                                  Have fun!                                            ")
 
 
-def save_game():
+def save_game(): 
+    # Save game data to game.dat
+    if is_grid_empty():
+        messagebox.showwarning("Save Game", "Cannot save an empty grid.")
+        return
     try:
         with open("game.dat", "w") as f:
             # Save current grid state
@@ -193,7 +207,11 @@ def save_game():
         messagebox.showerror("Save Game", f"An error occurred while saving: {e}")
 
 
-def load_game():
+def load_game(): 
+    # Load game data from game.dat
+    if (is_revealed):
+        messagebox.showwarning("Load Game", "Cannot load a game after revealing the grid.")
+        return
     try:
         reset_grid()  # Clear the existing grid
         with open("game.dat", "r") as f:
@@ -229,22 +247,25 @@ def load_game():
         messagebox.showerror("Load Game", f"An error occurred while loading: {e}")
 
 
-def game_button(parent):
+def game_button(parent): # Game button
+    global reveal_button, save_button, load_button
     # Create game buttons (New game, Reveal answers, Save game, Load game)
     reset_button = tk.Button(parent, text="New game", font=("Arial", 16), command=new_game)
-    reveal_button = tk.Button(parent, text="Reveal", font=("Arial", 16), command=reveal_grid)
-    save_button = tk.Button(parent, text="Save game", font=("Arial", 16), command=save_game)
+    reveal_button = tk.Button(parent, text="Reveal", font=("Arial", 16), command=reveal_grid, state="disabled")
+    save_button = tk.Button(parent, text="Save game", font=("Arial", 16), command=save_game, state="disable")
     load_button = tk.Button(parent, text="Load game", font=("Arial", 16), command=load_game)
-    instruction_button = tk.Button(parent, text="Instruction", font=("Arial", 16), command=instruction)
+    instruction_button = tk.Button(parent, text="Instruction", font=("Arial", 18), command=instruction)
     reset_button.pack(padx=10, pady=10, anchor="center", expand=True)
     reveal_button.pack(padx=10, pady=10, anchor="center", expand=True)
     save_button.pack(padx=10, pady=10, anchor="center", expand=True)
     load_button.pack(padx=10, pady=10, anchor="center", expand=True)
     instruction_button.pack(padx=10, pady=10, anchor="center", expand=True)
+    return reveal_button, save_button # Return "Reveal" button 
 
 
 
 def reveal_grid():
+    global is_revealed
     # Reveal correct answer
     for row in range(grid_size):
         for col in range(grid_size):
@@ -252,6 +273,10 @@ def reveal_grid():
             entries[(row, col)].delete(0, tk.END)
             entries[(row, col)].insert(0, answers_grid[row][col])  # Insert the original number
             entries[(row, col)].config(state="readonly")  # Lock after revealing
+    reveal_button.config(state="disabled") # Disable "Reveal" button
+    save_button.config(state="disabled") # Disable "Save game" button  
+    load_button.config(state="disabled") # Disable "Load game" button
+    is_revealed = True           
 
 
 def bind_entry_events():
@@ -262,7 +287,9 @@ def bind_entry_events():
 
     
 def new_game():
+    global is_revealed
     # Reset the grid and generate a new Sudoku puzzle
+    is_revealed = False
     reset_grid()
     fill_grid() 
     # Save the fully solved grid before removing any numbers
@@ -271,6 +298,9 @@ def new_game():
             answers_grid[row][col] = int(entries[(row, col)].get())  # Save the number in the answers grid
     remove_numbers()  # Remove numbers to make the puzzle playable
     bind_entry_events()
+    reveal_button.config(state="normal") # Enable "Reveal" button  
+    save_button.config(state="normal") # Enable "Save game" button
+    load_button.config(state="normal") # Enable "Load game" button 
 
 
 def main():
@@ -280,15 +310,16 @@ def main():
     left_frame = tk.Frame(root)
     right_frame = tk.Frame(root)
     left_frame.pack(side="left", padx=75)
-    right_frame.pack(side="right", padx=50)
+    right_frame.pack(side="right", padx=40)
     # Set up the grid and buttons
-    create_grid(left_frame)
-    game_button(right_frame)
+    create_grid(left_frame) # Show Sudoku grid
+    game_button(right_frame) # Show buttons  
+
 
 # Create the main window for the application
 root = tk.Tk()
-root.geometry("800x500")
-root.title("Sudoku Game")
+root.geometry("960x500")
+root.title("SudokuGame")
 
 
 if __name__ == "__main__":
