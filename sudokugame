@@ -6,6 +6,7 @@ grid_size = 9
 mini_grid_size = 3
 entries = {}
 answers_grid = [[0] * grid_size for _ in range(grid_size)]  # Store original grid
+editable_grid = [[0] * grid_size for _ in range(grid_size)]  # Track editable states (0 = editable, 1 = read-only)
 
 
 def validate_input(char):
@@ -99,11 +100,15 @@ def remove_numbers():  # Remove 20-60 numbers
 
 
 def lock_initial_numbers():
-    # Lock the initially filled numbers
+    # Lock the initially filled numbers and update the editable grid
     for row in range(grid_size):
         for col in range(grid_size):
             if entries[(row, col)].get() != "":
                 entries[(row, col)].config(state="readonly")  # Lock the entry
+                editable_grid[row][col] = 1  # Mark as read-only
+            else:
+                editable_grid[row][col] = 0  # Mark as editable
+
 
 
 def reset_grid():
@@ -160,12 +165,81 @@ def instruction():
     instruction_label.pack(pady=10)
 
 
-def reset_game():
-    # Create a new game button
+def save_game():
+    try:
+        with open("game.dat", "w") as f:
+            # Save current grid state
+            for row in range(grid_size):
+                for col in range(grid_size):
+                    value = entries[(row, col)].get()
+                    f.write((value if value else "0") + " ")  # Write "0" if the entry is empty
+                f.write("\n")
+            f.write("EDITABLE\n")  # Indicate the start of the editable state section
+            # Save editable states
+            for row in range(grid_size):
+                for col in range(grid_size):
+                    value = editable_grid[row][col]  # Get editable state
+                    f.write(str(value) + " ")
+                f.write("\n")
+            f.write("ANSWERS\n")  # Indicate the start of the answers section
+            # Save answers grid
+            for row in range(grid_size):
+                for col in range(grid_size):
+                    value = answers_grid[row][col]
+                    f.write(str(value) + " ")
+                f.write("\n")
+        messagebox.showinfo("Save Game", "Game has been saved.")
+    except Exception as e:
+        messagebox.showerror("Save Game", f"An error occurred while saving: {e}")
+
+
+def load_game():
+    try:
+        reset_grid()  # Clear the existing grid
+        with open("game.dat", "r") as f:
+            # Load the current grid state
+            for row in range(grid_size):
+                line = f.readline().strip().split()
+                for col in range(grid_size):
+                    value = line[col]
+                    entries[(row, col)].delete(0, tk.END)  # Clear existing value
+                    if value != "0":  # If not empty, insert the value and lock if necessary
+                        entries[(row, col)].insert(0, value)                        
+            # Read the "EDITABLE" line and load the editable grid states
+            line = f.readline().strip()  # Read "EDITABLE" section header
+            for row in range(grid_size):
+                line = f.readline().strip().split()
+                for col in range(grid_size):
+                    editable_grid[row][col] = int(line[col])
+                    if editable_grid[row][col] == 1:  # Mark as read-only if it's not editable
+                        entries[(row, col)].config(state="readonly")
+                    else:
+                        entries[(row, col)].config(state="normal")  # Otherwise, make it editable            
+            # Read the "ANSWERS" line and load the answers grid
+            line = f.readline().strip()  # Read "ANSWERS" section header
+            for row in range(grid_size):
+                line = f.readline().strip().split()
+                for col in range(grid_size):
+                    answers_grid[row][col] = int(line[col])  # Properly populate the answers grid
+            bind_entry_events()  # Rebind events after loading
+        messagebox.showinfo("Load Game", "Game successfully loaded.")
+    except FileNotFoundError:
+        messagebox.showwarning("Load Game", "No saved game found.")
+    except Exception as e:
+        messagebox.showerror("Load Game", f"An error occurred while loading: {e}")
+
+
+def game_button():
+    # Create game buttons (New game, Reveal answers, Save game, Load game)
     reset_button = tk.Button(root, text="New game", font=("Arial", 16), command=new_game)
     reveal_button = tk.Button(root, text="Reveal", font=("Arial", 16), command=reveal_grid)
+    save_button = tk.Button(root, text="Save game", font=("Arial", 16), command=save_game)
+    load_button = tk.Button(root, text="Load game", font=("Arial", 16), command=load_game)
     reset_button.pack(padx=20)
     reveal_button.pack(padx=20)
+    save_button.pack(padx=20)
+    load_button.pack(padx=20)
+
 
 
 def reveal_grid():
@@ -188,8 +262,12 @@ def bind_entry_events():
 def new_game():
     # Reset the grid and generate a new Sudoku puzzle
     reset_grid()
-    fill_grid()
-    remove_numbers()
+    fill_grid() 
+    # Save the fully solved grid before removing any numbers
+    for row in range(grid_size):
+        for col in range(grid_size):
+            answers_grid[row][col] = int(entries[(row, col)].get())  # Save the number in the answers grid
+    remove_numbers()  # Remove numbers to make the puzzle playable
     bind_entry_events()
 
 
@@ -198,7 +276,7 @@ def main():
     create_grid()
     new_game()
     instruction()
-    reset_game()
+    game_button()
 
 # Create the main window for the application
 root = tk.Tk()
