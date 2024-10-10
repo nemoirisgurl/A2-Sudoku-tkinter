@@ -99,9 +99,12 @@ def fill_grid():
     return False  # Trigger backtracking
 
 
-def remove_numbers():  
-    # Remove 20-60 numbers from grid
-    num_to_remove = random.randint(20, 60)
+def remove_numbers(remove_grid_count=None): 
+    # Remove numbers from grid
+    if (remove_grid_count is None):
+        num_to_remove = random.randint(20, 60) # Random mode
+    else:
+        num_to_remove = remove_grid_count # Custom mode    
     all_cells = [(i, j) for i in range(grid_size) for j in range(grid_size)]
     random.shuffle(all_cells)  # Shuffle to randomly pick cells to clear
     # Remove numbers from a random set of cells
@@ -171,7 +174,8 @@ def check_completion():
     # Check if the puzzle is complete and display win message
     if check_win():
         messagebox.showinfo("Victory", "You solved the puzzle!")
-        new_game()
+        reset_grid()
+        # Clear grid
 
 
 def on_entry_change(event):
@@ -263,7 +267,7 @@ def load_game():
 def game_button(parent): # Game button
     global reveal_button, save_button, load_button
     # Create game buttons (New game, Reveal answers, Save game, Load game)
-    reset_button = tk.Button(parent, text="New game", font=("Arial", 16), command=new_game)
+    reset_button = tk.Button(parent, text="New game", font=("Arial", 16), command=new_game_setting)
     reveal_button = tk.Button(parent, text="Reveal", font=("Arial", 16), command=reveal_grid, state="disabled")
     save_button = tk.Button(parent, text="Save game", font=("Arial", 16), command=save_game, state="disable")
     load_button = tk.Button(parent, text="Load game", font=("Arial", 16), command=load_game)
@@ -299,9 +303,9 @@ def bind_entry_events():
             entries[(row, col)].bind("<KeyRelease>", on_entry_change)
 
     
-def new_game():
+def random_mode():
     global is_revealed
-    # Reset the grid and generate a new Sudoku puzzle
+    # Random mode (Reset grid then generate new Sudoku)
     is_revealed = False
     reset_grid()
     fill_grid() 
@@ -309,11 +313,50 @@ def new_game():
     for row in range(grid_size):
         for col in range(grid_size):
             answers_grid[row][col] = int(entries[(row, col)].get())  # Save the number in the answers grid
-    remove_numbers()  # Remove numbers to make the puzzle playable
     bind_entry_events()
     reveal_button.config(state="normal") # Enable "Reveal" button  
     save_button.config(state="normal") # Enable "Save game" button
     load_button.config(state="normal") # Enable "Load game" button 
+
+
+def custom_mode():
+    # Custom mode (Input a number of )
+    def get_remove_number():
+        try:
+            remove_grid_count = int(custom_mode_entry.get())
+            if (0 < remove_grid_count < grid_size * grid_size):
+                random_mode()
+                remove_numbers(remove_grid_count)
+            else:
+                messagebox.showwarning("Error", f"Please enter the number between 0 and {grid_size * grid_size}")
+                custom_mode()
+        except ValueError:
+            messagebox.showwarning("Error", "Invaild input")
+            custom_mode()
+        custom_mode_window.destroy()    
+    custom_mode_window = tk.Toplevel()
+    custom_mode_window.geometry("450x200")
+    custom_mode_window.title("Custom Mode")
+    custom_mode_label = tk.Label(custom_mode_window, text="Enter a number of grids to be removed ", font=("Arial", 14))
+    custom_mode_entry = tk.Entry(custom_mode_window, font=("Arial", 14), width= 5, justify="center")
+    confirm_button = tk.Button(custom_mode_window, text="Start Game", font=("Arial", 14), command=get_remove_number)
+    custom_mode_label.pack(pady=10)
+    custom_mode_entry.pack(pady=10)
+    confirm_button.pack(pady=10)
+
+
+def new_game_setting():
+    # Choose to remove random or custom numbers to be removed
+    new_game_setting = tk.Toplevel()
+    new_game_setting.geometry("350x350")
+    new_game_setting.title("New Game")
+    mode_selection = tk.Label(new_game_setting, text="Choose mode", font=("Arial", 24))
+    random_mode_button = tk.Button(new_game_setting, text="Random", font=("Arial", 16), command=lambda:[random_mode(), remove_numbers(), new_game_setting.destroy()])
+    custom_mode_button = tk.Button(new_game_setting, text="Custom", font=("Arial", 16), command=lambda:[custom_mode(), new_game_setting.destroy()])
+    mode_selection.pack(pady=10, expand=True)
+    random_mode_button.pack(pady=10, expand=True)
+    custom_mode_button.pack(pady=10, expand=True)
+    new_game_setting.wait_window()
 
 
 def main():
