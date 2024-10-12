@@ -10,6 +10,27 @@ editable_grid = [[0] * grid_size for _ in range(grid_size)]  # Track editable st
 is_revealed = False
 hint_count = 0
 max_hint = None
+font_size = 14
+button_size = 2
+
+def scale_widget():
+    # Scale and update widget size 
+    width = root.winfo_width()
+    height = root.winfo_height()
+    new_font_size = max(3, int(height / 50))
+    new_grid_size = max(3, int(width / (grid_size + 600)))
+    new_button_size = max(1, int(height / 50))
+    for i in range(grid_size):
+        for j in range(grid_size):
+            entries[(i, j)].config(font=("Arial", (new_font_size + 8)), width=new_grid_size)
+    for button in [reset_button, reveal_button, save_button, load_button, hint_button, instruction_button]:
+        button.config(font=("Arial", new_font_size), width=new_button_size)     
+
+
+def resize_widget(event):
+    # Call scale_widget() when window is resized 
+    scale_widget()
+
 
 def validate_input(char):
     # Allow only numbers 1-9
@@ -33,7 +54,7 @@ def create_grid(parent):
             right_border = 6 if j == grid_size - 1 else 1
             border = tk.Frame(parent, highlightbackground="black", highlightthickness=1)
             border.grid(row=i, column=j, padx=(left_border, right_border), pady=(top_border, bottom_border))
-            entry = tk.Entry(border, bg=entry_color, width=3, justify="center", font=("Arial", 24), validate="key", validatecommand=vcmd)
+            entry = tk.Entry(border, bg=entry_color, width=3, justify="center", font=("Arial", font_size + 8), validate="key", validatecommand=vcmd)
             entry.pack(padx=1, pady=1)
             entries[(i, j)] = entry  # Store Entry widget
             for key, direction in [("<Up>", (-1, 0)), ("<Down>", (1, 0)), ("<Left>", (0, -1)), ("<Right>", (0, 1)),
@@ -108,7 +129,7 @@ def remove_numbers(remove_grid_count=None):
         num_to_remove = random.randint(20, 60) # Random mode
     else:
         num_to_remove = remove_grid_count # Custom mode 
-    max_hint = 1 if (num_to_remove // 10 == 0) else num_to_remove // 10
+    max_hint = 1 if (num_to_remove // 10 == 0) else (num_to_remove // 10) + 1
     hint_count = 0
     all_cells = [(i, j) for i in range(grid_size) for j in range(grid_size)]
     random.shuffle(all_cells)  # Shuffle to randomly pick cells to clear
@@ -254,20 +275,20 @@ def load_game():
 
 
 def game_button(parent): # Game button
-    global reveal_button, save_button, load_button, hint_button
+    global reset_button, reveal_button, save_button, load_button, hint_button, instruction_button
     # Create game buttons (New game, Reveal answers, Save game, Load game)
-    reset_button = tk.Button(parent, text="New game", font=("Arial", 16), command=new_game_setting)
-    reveal_button = tk.Button(parent, text="Reveal", font=("Arial", 16), command=reveal_grid, state="disabled")
-    save_button = tk.Button(parent, text="Save game", font=("Arial", 16), command=save_game, state="disable")
-    load_button = tk.Button(parent, text="Load game", font=("Arial", 16), command=load_game)
-    hint_button = tk.Button(parent, text="Hint", font=("Arial", 16), command=hint, state="disabled")
-    instruction_button = tk.Button(parent, text="Instruction", font=("Arial", 18), command=instruction)
-    reset_button.pack(padx=10, pady=10, anchor="center", expand=True)
-    reveal_button.pack(padx=10, pady=10, anchor="center", expand=True)
-    save_button.pack(padx=10, pady=10, anchor="center", expand=True)
-    load_button.pack(padx=10, pady=10, anchor="center", expand=True)
-    hint_button.pack(padx=10, pady=10, anchor="center", expand=True)
-    instruction_button.pack(padx=10, pady=10, anchor="center", expand=True)
+    reset_button = tk.Button(parent, text="New game", font=("Arial", font_size), command=new_game_setting)
+    reveal_button = tk.Button(parent, text="Reveal", font=("Arial", font_size), command=reveal_grid, state="disabled")
+    save_button = tk.Button(parent, text="Save game", font=("Arial", font_size), command=save_game, state="disable")
+    load_button = tk.Button(parent, text="Load game", font=("Arial", font_size), command=load_game)
+    hint_button = tk.Button(parent, text="Hint", font=("Arial", font_size), command=hint, state="disabled")
+    instruction_button = tk.Button(parent, text="Instruction", font=("Arial", font_size + 2), command=instruction)
+    reset_button.grid(row=0, column=0, padx=10, pady=10)
+    load_button.grid(row=0, column=1, padx=10, pady=10)
+    save_button.grid(row=0, column=2, padx=10, pady=10)
+    hint_button.grid(row=0, column=3, padx=10, pady=10)
+    reveal_button.grid(row=0, column=4, padx=10, pady=10)
+    instruction_button.grid(row=1, column=2, padx=10, pady=10)
     return reveal_button, save_button, hint_button # Return buttons' state
 
 
@@ -341,12 +362,12 @@ def new_game_setting():
     new_game_setting = tk.Toplevel()
     new_game_setting.geometry("350x350")
     new_game_setting.title("New Game")
-    mode_selection = tk.Label(new_game_setting, text="Choose mode", font=("Arial", 24))
-    random_mode_button = tk.Button(new_game_setting, text="Random", font=("Arial", 16), command=lambda:[random_mode(), remove_numbers(), new_game_setting.destroy()])
-    custom_mode_button = tk.Button(new_game_setting, text="Custom", font=("Arial", 16), command=lambda:[custom_mode(), new_game_setting.destroy()])
-    mode_selection.pack(pady=10, expand=True)
-    random_mode_button.pack(pady=10, expand=True)
-    custom_mode_button.pack(pady=10, expand=True)
+    mode_selection = tk.Label(new_game_setting, text="Choose mode", font=("Arial", font_size + 8))
+    random_mode_button = tk.Button(new_game_setting, text="Random", font=("Arial", font_size), command=lambda:[random_mode(), remove_numbers(), new_game_setting.destroy()])
+    custom_mode_button = tk.Button(new_game_setting, text="Custom", font=("Arial", font_size), command=lambda:[custom_mode(), new_game_setting.destroy()])
+    mode_selection.pack(pady=10)
+    random_mode_button.pack(pady=10)
+    custom_mode_button.pack(pady=10)
     new_game_setting.wait_window()
 
 
@@ -354,19 +375,21 @@ def main():
     # Main function of Sudoku game
     sudoku = tk.Label(root, text="Sudoku", font=("Arial, 48"))
     sudoku.pack(pady= 10)
-    left_frame = tk.Frame(root)
-    right_frame = tk.Frame(root)
-    left_frame.pack(side="left", padx=75)
-    right_frame.pack(side="right", padx=15)
+    top_frame = tk.Frame(root)
+    buttom_frame = tk.Frame(root)
+    top_frame.pack(side="top", padx=75, pady=(0, 2.5))
+    buttom_frame.pack(side="bottom", padx=15, pady=(2.5, 0))
     # Set up the grid and buttons
-    create_grid(left_frame) # Show Sudoku grid
-    game_button(right_frame) # Show buttons  
+    create_grid(top_frame) # Show Sudoku grid
+    game_button(buttom_frame) # Show buttons  
 
 
 # Create the main window for the application
 root = tk.Tk()
-root.geometry("960x600")
+root.geometry("960x600") # Default window size
 root.title("SudokuGame")
+root.minsize(720, 600) # Minimum window size
+root.bind("<Configure>", resize_widget)
 
 
 if __name__ == "__main__":
