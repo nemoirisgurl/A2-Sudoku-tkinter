@@ -8,6 +8,8 @@ entries = {}
 answers_grid = [[0] * grid_size for _ in range(grid_size)]  # Store original grid
 editable_grid = [[0] * grid_size for _ in range(grid_size)]  # Track editable states (0 = editable, 1 = read-only)
 is_revealed = False
+hint_count = 0
+max_hint = None
 
 def validate_input(char):
     # Allow only numbers 1-9
@@ -101,10 +103,13 @@ def fill_grid():
 
 def remove_numbers(remove_grid_count=None): 
     # Remove numbers from grid
+    global hint_count, max_hint
     if (remove_grid_count is None):
         num_to_remove = random.randint(20, 60) # Random mode
     else:
-        num_to_remove = remove_grid_count # Custom mode    
+        num_to_remove = remove_grid_count # Custom mode 
+    max_hint = 1 if (num_to_remove // 10 == 0) else num_to_remove // 10
+    hint_count = 0
     all_cells = [(i, j) for i in range(grid_size) for j in range(grid_size)]
     random.shuffle(all_cells)  # Shuffle to randomly pick cells to clear
     # Remove numbers from a random set of cells
@@ -112,6 +117,7 @@ def remove_numbers(remove_grid_count=None):
         row, col = all_cells[i]
         entries[(row, col)].delete(0, tk.END)
     lock_initial_numbers()
+    hint_button.config(state="normal")
 
 
 def lock_initial_numbers():
@@ -124,6 +130,21 @@ def lock_initial_numbers():
             else:
                 editable_grid[row][col] = 0  # Mark as editable
 
+
+def hint():
+    # Show hint on the random empty grids
+    global hint_count, max_hint, editable_grid
+    if (hint_count < max_hint):
+        empty_grids = [(row, col) for row in range(grid_size) for col in range(grid_size) if is_empty(row, col)]
+        if (empty_grids):
+            row, col = random.choice(empty_grids)
+            entries[(row, col)].delete(0, tk.END)
+            entries[(row, col)].insert(0, answers_grid[row][col])
+            entries[(row, col)].config(state="readonly")
+            editable_grid[row][col] = 1
+            hint_count += 1
+        if (hint_count >= max_hint):
+            hint_button.config(state="disabled")
 
 
 def reset_grid():
@@ -194,31 +215,14 @@ def instruction():
 
 def save_game(): 
     # Save game data to game.dat
-    if is_grid_empty():
-        messagebox.showwarning("Save Game", "Cannot save an empty grid.")
-        return
     try:
         with open("game.dat", "w") as f:
             # Save current grid state
             for row in range(grid_size):
                 for col in range(grid_size):
-                    value = entries[(row, col)].get()
-                    f.write((value if value else "0") + " ")  # Write "0" if the entry is empty
-                f.write("\n")
-            f.write("EDITABLE\n")  # Indicate the start of the editable state section
-            # Save editable states
-            for row in range(grid_size):
-                for col in range(grid_size):
-                    value = editable_grid[row][col]  # Get editable state
-                    f.write(str(value) + " ")
-                f.write("\n")
-            f.write("ANSWERS\n")  # Indicate the start of the answers section
-            # Save answers grid
-            for row in range(grid_size):
-                for col in range(grid_size):
-                    value = answers_grid[row][col]
-                    f.write(str(value) + " ")
-                f.write("\n")
+                    save_value = entries[(row, col)].get() or "0"
+                    f.write(save_value + " ")
+                f.write("\n")    
         messagebox.showinfo("Save Game", "Game has been saved.")
     except Exception as e:
         messagebox.showerror("Save Game", f"An error occurred while saving: {e}")
@@ -226,9 +230,6 @@ def save_game():
 
 def load_game(): 
     # Load game data from game.dat
-    if (is_revealed):
-        messagebox.showwarning("Load Game", "Cannot load a game after revealing the grid.")
-        return
     try:
         reset_grid()  # Clear the existing grid
         with open("game.dat", "r") as f:
@@ -236,27 +237,15 @@ def load_game():
             for row in range(grid_size):
                 line = f.readline().strip().split()
                 for col in range(grid_size):
-                    value = line[col]
+                    value = line[col] if col < len(line) else "0"
                     entries[(row, col)].delete(0, tk.END)  # Clear existing value
-                    if value != "0":  # If not empty, insert the value and lock if necessary
-                        entries[(row, col)].insert(0, value)                        
-            # Read the "EDITABLE" line and load the editable grid states
-            line = f.readline().strip()  # Read "EDITABLE" section header
-            for row in range(grid_size):
-                line = f.readline().strip().split()
-                for col in range(grid_size):
-                    editable_grid[row][col] = int(line[col])
-                    if editable_grid[row][col] == 1:  # Mark as read-only if it's not editable
+                    entries[(row, col)].insert(0, value)                        
+                    if (value != "0"):
                         entries[(row, col)].config(state="readonly")
+                        editable_grid[row][col] = 1
                     else:
-                        entries[(row, col)].config(state="normal")  # Otherwise, make it editable            
-            # Read the "ANSWERS" line and load the answers grid
-            line = f.readline().strip()  # Read "ANSWERS" section header
-            for row in range(grid_size):
-                line = f.readline().strip().split()
-                for col in range(grid_size):
-                    answers_grid[row][col] = int(line[col])  # Properly populate the answers grid
-            bind_entry_events()  # Rebind events after loading
+                        entries[(row, col)].config(state="normal")
+                        editable_grid[row][col] = 0
         messagebox.showinfo("Load Game", "Game successfully loaded.")
     except FileNotFoundError:
         messagebox.showwarning("Load Game", "No saved game found.")
@@ -265,20 +254,21 @@ def load_game():
 
 
 def game_button(parent): # Game button
-    global reveal_button, save_button, load_button
+    global reveal_button, save_button, load_button, hint_button
     # Create game buttons (New game, Reveal answers, Save game, Load game)
     reset_button = tk.Button(parent, text="New game", font=("Arial", 16), command=new_game_setting)
     reveal_button = tk.Button(parent, text="Reveal", font=("Arial", 16), command=reveal_grid, state="disabled")
     save_button = tk.Button(parent, text="Save game", font=("Arial", 16), command=save_game, state="disable")
     load_button = tk.Button(parent, text="Load game", font=("Arial", 16), command=load_game)
+    hint_button = tk.Button(parent, text="Hint", font=("Arial", 16), command=hint, state="disabled")
     instruction_button = tk.Button(parent, text="Instruction", font=("Arial", 18), command=instruction)
     reset_button.pack(padx=10, pady=10, anchor="center", expand=True)
     reveal_button.pack(padx=10, pady=10, anchor="center", expand=True)
     save_button.pack(padx=10, pady=10, anchor="center", expand=True)
     load_button.pack(padx=10, pady=10, anchor="center", expand=True)
+    hint_button.pack(padx=10, pady=10, anchor="center", expand=True)
     instruction_button.pack(padx=10, pady=10, anchor="center", expand=True)
-    return reveal_button, save_button # Return "Reveal" button 
-
+    return reveal_button, save_button, hint_button # Return buttons' state
 
 
 def reveal_grid():
@@ -339,6 +329,7 @@ def custom_mode():
     custom_mode_window.title("Custom Mode")
     custom_mode_label = tk.Label(custom_mode_window, text="Enter a number of grids to be removed ", font=("Arial", 14))
     custom_mode_entry = tk.Entry(custom_mode_window, font=("Arial", 14), width= 5, justify="center")
+    custom_mode_entry.bind("<Return>", lambda event: get_remove_number())
     confirm_button = tk.Button(custom_mode_window, text="Start Game", font=("Arial", 14), command=get_remove_number)
     custom_mode_label.pack(pady=10)
     custom_mode_entry.pack(pady=10)
@@ -366,7 +357,7 @@ def main():
     left_frame = tk.Frame(root)
     right_frame = tk.Frame(root)
     left_frame.pack(side="left", padx=75)
-    right_frame.pack(side="right", padx=40)
+    right_frame.pack(side="right", padx=15)
     # Set up the grid and buttons
     create_grid(left_frame) # Show Sudoku grid
     game_button(right_frame) # Show buttons  
