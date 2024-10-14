@@ -12,22 +12,26 @@ hint_count = 0
 max_hint = 0 
 font_size = 14 # Default
 button_size = 1 # Default
-game_progress = 0
-progress_bar = None
+progress_percentage = 0
+progress_bar_size = 320
+
 
 def scale_widget():
     # Scale and update widget size 
     width = sudoku_game.winfo_width()
     height = sudoku_game.winfo_height()
+    print(width, height)
     new_font_size = max(3, int(height / 60))
     new_grid_size = max(3, int(width / (grid_size + 600)))
     new_button_size = max(1, int(height / 60))
+    new_progress_bar_size = height / 2
     for i in range(grid_size):
         for j in range(grid_size):
             entries[(i, j)].config(font=("Arial", (new_font_size + 8)), width=new_grid_size)
     for button in [reset_button, reveal_button, save_button, load_button, hint_button, instruction_button]:
         button.config(font=("Arial", new_font_size), width=new_button_size)     
-
+    progress_bar.config(length=new_progress_bar_size)
+    progress_label.config(font=("Arial", new_font_size))
 
 def resize_widget(event):
     # Call scale_widget() when window is resized 
@@ -126,7 +130,7 @@ def fill_grid():
 
 def remove_numbers(remove_grid_count=None): 
     # Remove numbers from grid
-    global hint_count, max_hint
+    global hint_count, max_hint, num_to_remove
     if (remove_grid_count is None):
         num_to_remove = random.randint(20, 60) # Random mode
     else:
@@ -182,7 +186,8 @@ def reset_grid():
             entries[(row, col)].config(state="normal")  # Make editable
             entries[(row, col)].config(fg="black")
             entries[(row, col)].delete(0, tk.END)
-            answers_grid[row][col] = 0      
+            answers_grid[row][col] = 0
+    save_button.config(state="normal")              
 
 
 def is_grid_empty():
@@ -223,32 +228,39 @@ def check_win():
 
 def check_completion():
     # Check if the puzzle is complete and display win message
-    if check_win():
-        #for row in range(grid_size):
-            #for col in range(grid_size):
-                #entries[(row, col)].config(fg="black")
+    if (check_win()):
+        for row in range(grid_size):
+            for col in range(grid_size):
+                entries[(row, col)].config(fg="black")
         messagebox.showinfo("Victory", "You solved the puzzle!")
+        progress_bar["value"] = 0
+        progress_label.config(text=f"Progress : {0:.2f}%")
         reset_grid()
+        load_button.config(state="normal")
         # Clear grid
 
 
 def on_entry_change(event):
     # Get the row and column of the entry that triggered the event
+    if (is_revealed):
+        return
     grid_input = event.widget
     for (row, col), entry in entries.items():
         if entry == grid_input:
             break       
-    if (answers_grid[row][col] != 0 and editable_grid[row][col] == 0):
+    if (answers_grid[row][col] != 0 and editable_grid[row][col] == 0 and not is_revealed):
         # Check answer on each grid
         input = grid_input.get()
-        if (input.isdigit() and input == str(answers_grid[row][col])):
-            grid_input.config(fg="green")  # Correct answer     
-        elif (input.isdigit()):
-            grid_input.config(fg="red")    # Incorrect answer
+        if (input.isdigit()):
+            if (input == str(answers_grid[row][col])):
+                grid_input.config(fg="green")  # Correct answer     
+            else:
+                grid_input.config(fg="red")    # Incorrect answer
         else:
-            grid_input.config(fg="black")  # Reset color if entry is empty or invalid           
+            grid_input.config(fg="black")  # Reset color if entry is empty or invalid
+    update_progress()                   
     check_completion()
-
+    
 
 def instruction(): 
     # Show game instruction
@@ -257,6 +269,23 @@ def instruction():
     "2. You can only place numbers 1-9 in each empty cell\n"
     "3. You cannot edit cells that locked\n"
     "                                  Have fun!                                            ")
+
+
+def update_progress():
+    global progress_percentage, num_to_remove
+    correct_grids = 0
+    total_grids = num_to_remove - hint_count
+    for row in range(grid_size):
+        for col in range(grid_size):
+            if (entries[(row, col)].get() == str(answers_grid[row][col]) and editable_grid[row][col] == 0):
+                correct_grids += 1
+    game_progress = correct_grids / total_grids
+    if (total_grids > 0):
+        progress_percentage = game_progress * 100  
+        progress_bar["value"] = progress_percentage
+    else:
+        progress_bar["value"] = 100
+    progress_label.config(text=f"Progress : {progress_percentage:.2f}%")
 
 
 def save_game(): 
@@ -274,7 +303,8 @@ def save_game():
                 save_editable_state(f)
                 f.write("Answer\n")
                 save_answers_grid(f)
-                f.write(f"Hints {hint_count}/{max_hint}")                
+                f.write(f"Hints {hint_count}/{max_hint}\n")
+                f.write(f"Difficulty : {num_to_remove - hint_count}")                
             messagebox.showinfo("Save Game", "Game has been saved.")
         else:
             return    
@@ -327,6 +357,9 @@ def load_game():
                 load_answers_grid(f)
                 bind_entry_events()
                 load_hint(f)
+                ##print(f.readline().split(" : "))
+                global num_to_remove
+                num_to_remove = int(f.readline().split(" : ")[1])
             messagebox.showinfo("Load Game", "Game successfully loaded.")
             save_button.config(state="normal")
             reveal_button.config(state="normal")
@@ -390,13 +423,22 @@ def game_button(parent):
     load_button = tk.Button(parent, text="Load game", font=("Arial", font_size), command=load_game)
     hint_button = tk.Button(parent, text="Hint", font=("Arial", font_size), command=hint, state="disabled")
     instruction_button = tk.Button(parent, text="Instruction", font=("Arial", font_size + 2), command=instruction)
-    reset_button.grid(row=0, column=0, padx=10, pady=10)
-    load_button.grid(row=0, column=1, padx=10, pady=10)
-    save_button.grid(row=0, column=2, padx=10, pady=10)
-    hint_button.grid(row=0, column=3, padx=10, pady=10)
-    reveal_button.grid(row=0, column=4, padx=10, pady=10)
-    instruction_button.grid(row=1, column=2, padx=10, pady=10)
+    reset_button.grid(row=1, column=0, padx=5, pady=10)
+    load_button.grid(row=1, column=1, padx=5, pady=10)
+    save_button.grid(row=1, column=2, padx=5, pady=10)
+    hint_button.grid(row=1, column=3, padx=5, pady=10)
+    reveal_button.grid(row=1, column=4, padx=5, pady=10)
+    instruction_button.grid(row=2, column=2, padx=5, pady=10)
+    
     return reveal_button, save_button, hint_button # Return buttons' state
+
+
+def create_progress_bar(parent):
+    global progress_label, progress_bar
+    progress_label = tk.Label(parent, text=f"Progress : {progress_percentage:.2f}%", font=("Arial", font_size + 2))
+    progress_bar = ttk.Progressbar(parent, orient="horizontal", length=progress_bar_size, mode="determinate")
+    progress_label.grid(row=0, column=0, columnspan=2, padx=5, pady=10)    
+    progress_bar.grid(row=0, column=2, columnspan=3, padx=5, pady=10)
 
 
 def reveal_grid():
@@ -411,7 +453,7 @@ def reveal_grid():
             entries[(row, col)].config(fg="black")  # Lock after revealing
     reveal_button.config(state="disabled") # Disable "Reveal" button
     save_button.config(state="disabled") # Disable "Save game" button  
-    load_button.config(state="disabled") # Disable "Load game" button
+    load_button.config(state="normal") # Disable "Load game" button
     is_revealed = True           
 
 
@@ -420,6 +462,7 @@ def bind_entry_events():
     for row in range(grid_size):
         for col in range(grid_size):
             entries[(row, col)].bind("<KeyRelease>", on_entry_change)
+          
                 
 def random_mode():
     global is_revealed
@@ -434,7 +477,7 @@ def random_mode():
     bind_entry_events()
     reveal_button.config(state="normal") # Enable "Reveal" button  
     save_button.config(state="normal") # Enable "Save game" button
-    load_button.config(state="disable") # Enable "Load game" button 
+    load_button.config(state="disable") # Enable "Load game" button
 
 
 def custom_mode():
@@ -483,12 +526,13 @@ def main():
     sudoku = tk.Label(sudoku_game, text="Sudoku", font=("Arial", font_size * 3))
     sudoku.pack(pady= 10)
     top_frame = tk.Frame(sudoku_game)
-    buttom_frame = tk.Frame(sudoku_game)
+    bottom_frame = tk.Frame(sudoku_game)
     top_frame.pack(side="top", padx=75)
-    buttom_frame.pack(side="bottom", padx=15, pady=(0, 25))
+    bottom_frame.pack(side="bottom", padx=15, pady=(0, 10))
     # Set up the grid and buttons
     create_grid(top_frame) # Show Sudoku grid
-    game_button(buttom_frame) # Show buttons 
+    create_progress_bar(bottom_frame) # Show progress bar
+    game_button(bottom_frame) # Show buttons 
     
 
 # Create the main window for the application
