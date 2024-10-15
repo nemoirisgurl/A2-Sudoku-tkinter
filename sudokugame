@@ -28,7 +28,7 @@ def scale_widget():
     for i in range(grid_size):
         for j in range(grid_size):
             entries[(i, j)].config(font=("Arial", (new_font_size + 8)), width=new_grid_size)
-    for button in [reset_button, reveal_button, save_button, load_button, hint_button, instruction_button]:
+    for button in [reset_button, reveal_button, save_button, load_button, hint_button, instruction_button, exit_button]:
         button.config(font=("Arial", new_font_size), width=new_button_size)     
     progress_bar.config(length=new_progress_bar_size)
     progress_label.config(font=("Arial", new_font_size))
@@ -174,6 +174,7 @@ def hint():
                 entries[(row, col)].config(state="readonly")
                 editable_grid[row][col] = 1
                 hint_count += 1
+                update_progress()
             if (hint_count >= max_hint):
                 hint_button.config(state="disabled")
         bind_entry_events()
@@ -187,7 +188,10 @@ def reset_grid():
             entries[(row, col)].config(fg="black")
             entries[(row, col)].delete(0, tk.END)
             answers_grid[row][col] = 0
-    save_button.config(state="normal")              
+    progress_percentage = 0
+    progress_label.config(text=f"Progress : {progress_percentage:.2f}%")
+    progress_bar["value"] = progress_percentage  
+    reveal_button.config(text="Reveal", state="normal", command=reveal_grid)      
 
 
 def is_grid_empty():
@@ -360,6 +364,7 @@ def load_game():
                 ##print(f.readline().split(" : "))
                 global num_to_remove
                 num_to_remove = int(f.readline().split(" : ")[1])
+                load_progress()
             messagebox.showinfo("Load Game", "Game successfully loaded.")
             save_button.config(state="normal")
             reveal_button.config(state="normal")
@@ -413,22 +418,39 @@ def load_hint(file):
     hint_count, max_hint = map(int, hint_line[1].split("/"))
 
 
+def load_progress():
+    # Load game progress
+    for row in range(grid_size):
+        for col in range(grid_size):
+            load_input = entries[(row, col)].get()
+            if (load_input.isdigit() and editable_grid[row][col] == 0 ):
+                if (load_input == str(answers_grid[row][col])):
+                    entries[(row, col)].config(fg="green")
+                else:
+                    entries[(row, col)].config(fg="red")
+            else:
+                entries[(row, col)].config(fg="black")
+    update_progress()            
+
+    
 def game_button(parent): 
     # Game button
-    global reset_button, reveal_button, save_button, load_button, hint_button, instruction_button
+    global reset_button, reveal_button, save_button, load_button, hint_button, instruction_button, exit_button
     # Create game buttons (New game, Reveal answers, Save game, Load game)
     reset_button = tk.Button(parent, text="New game", font=("Arial", font_size), command=new_game_setting)
     reveal_button = tk.Button(parent, text="Reveal", font=("Arial", font_size), command=reveal_grid, state="disabled")
     save_button = tk.Button(parent, text="Save game", font=("Arial", font_size), command=save_game, state="disabled")
     load_button = tk.Button(parent, text="Load game", font=("Arial", font_size), command=load_game)
     hint_button = tk.Button(parent, text="Hint", font=("Arial", font_size), command=hint, state="disabled")
-    instruction_button = tk.Button(parent, text="Instruction", font=("Arial", font_size + 2), command=instruction)
+    instruction_button = tk.Button(parent, text="Instruction", font=("Arial", font_size), command=instruction)
+    exit_button = tk.Button(parent, text="Quit game", font=("Arial", font_size), command=quit)
     reset_button.grid(row=1, column=0, padx=5, pady=10)
     load_button.grid(row=1, column=1, padx=5, pady=10)
     save_button.grid(row=1, column=2, padx=5, pady=10)
     hint_button.grid(row=1, column=3, padx=5, pady=10)
     reveal_button.grid(row=1, column=4, padx=5, pady=10)
-    instruction_button.grid(row=2, column=2, padx=5, pady=10)
+    instruction_button.grid(row=2, column=1, padx=5, pady=10)
+    exit_button.grid(row=2, column=3, padx=5, pady=10)
     
     return reveal_button, save_button, hint_button # Return buttons' state
 
@@ -451,7 +473,7 @@ def reveal_grid():
             entries[(row, col)].insert(0, answers_grid[row][col])  # Insert the original number
             entries[(row, col)].config(state="readonly")
             entries[(row, col)].config(fg="black")  # Lock after revealing
-    reveal_button.config(state="disabled") # Disable "Reveal" button
+    reveal_button.config(text="Clear", state="normal", command=reset_grid) # Disable "Reveal" button
     save_button.config(state="disabled") # Disable "Save game" button  
     load_button.config(state="normal") # Disable "Load game" button
     is_revealed = True           
