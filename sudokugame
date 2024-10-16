@@ -2,11 +2,11 @@ import tkinter as tk
 from tkinter import messagebox, filedialog, ttk
 import random
 
-grid_size, mini_grid_size = 9, 3
-entries = {}
-answers_grid = [[0] * grid_size for _ in range(grid_size)]  # Store original grid
-editable_grid = [[0] * grid_size for _ in range(grid_size)]  # Track editable states (0 = editable, 1 = read-only)
+GRID_SIZE, MINI_GRID_SIZE = 9, 3
+ANSWERS_GRID = [[0] * GRID_SIZE for _ in range(GRID_SIZE)]  # Store original grid
+EDITABLE_GRID = [[0] * GRID_SIZE for _ in range(GRID_SIZE)]  # Track editable states (0 = editable, 1 = read-only)
 is_revealed = False
+entries = {}
 hint_count , max_hint = 0, 0 
 font_size, button_size, progress_bar_size = 14, 1, 300 # Default
 progress_percentage = 0
@@ -14,10 +14,10 @@ progress_percentage = 0
 def scale_widget():
     # Scale and update widget size 
     width, height = sudoku_game.winfo_width(), sudoku_game.winfo_height()
-    new_font_size, new_grid_size, new_button_size, new_progress_bar_size = max(3, int(height / 60)), max(3, int(width / (grid_size + 450))), max(1, int(height / 60)), width / 3.2
-    for row in range(grid_size):
-        for col in range(grid_size):
-            entries[(row, col)].config(font=("Arial", (new_font_size + 8)), width=new_grid_size)
+    new_font_size, new_GRID_SIZE, new_button_size, new_progress_bar_size = max(3, int(height / 60)), max(3, int(width / (GRID_SIZE + 450))), max(1, int(height / 60)), width / 3.2
+    for row in range(GRID_SIZE):
+        for col in range(GRID_SIZE):
+            entries[(row, col)].config(font=("Arial", (new_font_size + 8)), width=new_GRID_SIZE)
     for button_name, button in game_buttons.items():
         button.config(font=("Arial", new_font_size), width=new_button_size)     
     progress_bar.config(length=new_progress_bar_size)
@@ -37,14 +37,14 @@ def validate_input(char):
 def create_grid(parent):
     # Create a 9x9 Sudoku grid with border
     vcmd = (sudoku_game.register(validate_input), "%P")  # Register validation function
-    for row in range(grid_size):
-        for col in range(grid_size):
+    for row in range(GRID_SIZE):
+        for col in range(GRID_SIZE):
             # Alternate colors based on 3x3 blocks
-            entry_color = "light yellow" if (row // mini_grid_size + col // mini_grid_size) % 2 == 0 else "light blue"
-            top_border = 6 if row % mini_grid_size == 0 else 1 # Highlight
-            left_border = 6 if col % mini_grid_size == 0 else 1
-            bottom_border = 6 if row == grid_size - 1 else 1
-            right_border = 6 if col == grid_size - 1 else 1
+            entry_color = "light yellow" if (row // MINI_GRID_SIZE + col // MINI_GRID_SIZE) % 2 == 0 else "light blue"
+            top_border = 6 if row % MINI_GRID_SIZE == 0 else 1 # Highlight
+            left_border = 6 if col % MINI_GRID_SIZE == 0 else 1
+            bottom_border = 6 if row == GRID_SIZE - 1 else 1
+            right_border = 6 if col == GRID_SIZE - 1 else 1
             border = tk.Frame(parent, highlightbackground="black", highlightthickness=1)
             border.grid(row=row, column=col, padx=(left_border, right_border), pady=(top_border, bottom_border))
             entry = tk.Entry(border, bg=entry_color, width=3, justify="center", font=("Arial", font_size + 8), validate="key", validatecommand=vcmd)
@@ -58,18 +58,18 @@ def create_grid(parent):
 
 def move_grid(row, col):
     # Move focus to a specific cell, ensuring the row and column stay within bounds
-    if (0 <= row < grid_size and 0 <= col < grid_size):
+    if (0 <= row < GRID_SIZE and 0 <= col < GRID_SIZE):
         entries[(row, col)].focus_set()
 
 def check_possible_num(num, row, col):
     # Check if the number can be placed in the (row, col) position
-    for j in range(grid_size):
+    for j in range(GRID_SIZE):
         if (entries[(row, j)].get() == str(num) or entries[(j, col)].get() == str(num)):
             return False
-    start_row = (row // mini_grid_size) * mini_grid_size
-    start_col = (col // mini_grid_size) * mini_grid_size
-    for i in range(mini_grid_size):
-        for j in range(mini_grid_size):
+    start_row = (row // MINI_GRID_SIZE) * MINI_GRID_SIZE
+    start_col = (col // MINI_GRID_SIZE) * MINI_GRID_SIZE
+    for i in range(MINI_GRID_SIZE):
+        for j in range(MINI_GRID_SIZE):
             if (entries[(start_row + i, start_col + j)].get() == str(num)):
                 return False
     return True
@@ -80,8 +80,8 @@ def is_empty(row, col):
 
 def find_empty_spot():
     # Find the first empty spot in the grid
-    for row in range(grid_size):
-        for col in range(grid_size):
+    for row in range(GRID_SIZE):
+        for col in range(GRID_SIZE):
             if is_empty(row, col):
                 return (row, col)
     return None  # No empty spots
@@ -98,26 +98,25 @@ def fill_grid():
         if check_possible_num(num, row, col):
             entries[(row, col)].delete(0, tk.END)
             entries[(row, col)].insert(0, num)
-            answers_grid[row][col] = num  # Store the number in the answers grid
+            ANSWERS_GRID[row][col] = num  # Store the number in the answers grid
             if fill_grid():  # Recursively fill the next spot
                 return True
             # If filling with this number doesn't work, backtrack
             entries[(row, col)].delete(0, tk.END)
-            answers_grid[row][col] = 0  # Clear the answer in case of backtrack
+            ANSWERS_GRID[row][col] = 0  # Clear the answer in case of backtrack
     return False  # Trigger backtracking
 
-def remove_numbers(remove_grid_count): 
+def remove_numbers(remove_grid_count, mode): 
     # Remove numbers from grid
     global hint_count, max_hint, num_to_remove
     print(f"{remove_grid_count} grids has been removed")
     num_to_remove = remove_grid_count # Remove numbers
-    if (num_to_remove // 10 <= 0):
-        max_hint = 0     
-    else:
-        max_hint = num_to_remove // 10 
+    if (mode == "randommode"):
+        max_hint = 3
+    if (max_hint > 0):    
         game_buttons["hint_button"].config(state="normal") 
     hint_count = 0
-    all_cells = [(i, j) for i in range(grid_size) for j in range(grid_size)]
+    all_cells = [(i, j) for i in range(GRID_SIZE) for j in range(GRID_SIZE)]
     random.shuffle(all_cells)  # Shuffle to randomly pick cells to clear
     # Remove numbers from a random set of cells
     for i in range(num_to_remove):
@@ -127,26 +126,26 @@ def remove_numbers(remove_grid_count):
 
 def lock_initial_numbers():
     # Lock the initially filled numbers and update the editable grid
-    for row in range(grid_size):
-        for col in range(grid_size):
+    for row in range(GRID_SIZE):
+        for col in range(GRID_SIZE):
             if entries[(row, col)].get() != "":
                 entries[(row, col)].config(state="readonly")  # Lock the entry
-                editable_grid[row][col] = 1  # Mark as read-only
+                EDITABLE_GRID[row][col] = 1  # Mark as read-only
             else:
-                editable_grid[row][col] = 0  # Mark as editable
+                EDITABLE_GRID[row][col] = 0  # Mark as editable
 
 def hint():
     # Show hint on the random empty grids
-    global hint_count, max_hint, editable_grid
+    global hint_count, max_hint, EDITABLE_GRID
     if max_hint is not None:
         if (hint_count < max_hint):
-            empty_grids = [(row, col) for row in range(grid_size) for col in range(grid_size) if is_empty(row, col)]
+            empty_grids = [(row, col) for row in range(GRID_SIZE) for col in range(GRID_SIZE) if is_empty(row, col)]
             if (empty_grids):
                 row, col = random.choice(empty_grids)
                 entries[(row, col)].delete(0, tk.END)
-                entries[(row, col)].insert(0, answers_grid[row][col])
+                entries[(row, col)].insert(0, ANSWERS_GRID[row][col])
                 entries[(row, col)].config(state="readonly")
-                editable_grid[row][col] = 1
+                EDITABLE_GRID[row][col] = 1
                 hint_count += 1
                 update_progress()
             if (hint_count >= max_hint):
@@ -155,11 +154,11 @@ def hint():
 
 def reset_grid():
     # Clear the grid for a new game
-    for row in range(grid_size):
-        for col in range(grid_size):
+    for row in range(GRID_SIZE):
+        for col in range(GRID_SIZE):
             entries[(row, col)].config(state="normal", fg="black")  
             entries[(row, col)].delete(0, tk.END)
-            answers_grid[row][col] = 0
+            ANSWERS_GRID[row][col] = 0
     progress_percentage = 0
     progress_label.config(text=f"Progress : {progress_percentage:.2f}%")
     progress_bar["value"] = progress_percentage  
@@ -168,18 +167,18 @@ def reset_grid():
 
 def is_grid_empty():
     # Check if all cells are empty
-    for row in range(grid_size):
-        for col in range(grid_size):
+    for row in range(GRID_SIZE):
+        for col in range(GRID_SIZE):
             if entries[(row, col)].get() != "":
                 return False
     return True
 
 def check_win():
     # Check if the current grid is a valid Sudoku solution
-    for row in range(grid_size):
+    for row in range(GRID_SIZE):
         row_nums = set()
         col_nums = set()
-        for col in range(grid_size):
+        for col in range(GRID_SIZE):
             row_val = entries[(row, col)].get()
             col_val = entries[(col, row)].get()
             if (row_val == "" or col_val == ""):
@@ -191,11 +190,11 @@ def check_win():
                 return False  
             col_nums.add(col_val)
     # Check 3x3 blocks
-    for block_row in range(0, grid_size, mini_grid_size):
-        for block_col in range(0, grid_size, mini_grid_size):
+    for block_row in range(0, GRID_SIZE, MINI_GRID_SIZE):
+        for block_col in range(0, GRID_SIZE, MINI_GRID_SIZE):
             block_nums = set()
-            for i in range(mini_grid_size):
-                for j in range(mini_grid_size):
+            for i in range(MINI_GRID_SIZE):
+                for j in range(MINI_GRID_SIZE):
                     block_val = entries[(block_row + i, block_col + j)].get()
                     if block_val in block_nums:
                         return False  # Duplicates in block
@@ -205,8 +204,8 @@ def check_win():
 def check_completion():
     # Check if the puzzle is complete and display win message
     if (check_win()):
-        for row in range(grid_size):
-            for col in range(grid_size):
+        for row in range(GRID_SIZE):
+            for col in range(GRID_SIZE):
                 entries[(row, col)].config(fg="black")
         messagebox.showinfo("Victory", "You solved the puzzle!")
         progress_label.config(text=f"Progress : {100:.2f}%")
@@ -222,11 +221,11 @@ def on_entry_change(event):
     for (row, col), entry in entries.items():
         if entry == grid_input:
             break       
-    if (answers_grid[row][col] != 0 and editable_grid[row][col] == 0):
+    if (ANSWERS_GRID[row][col] != 0 and EDITABLE_GRID[row][col] == 0):
         # Check answer on each grid
         input_value = grid_input.get()
         if (input_value.isdigit()):
-            if (input_value == str(answers_grid[row][col])):
+            if (input_value == str(ANSWERS_GRID[row][col])):
                 grid_input.config(fg="green")  # Correct answer     
             else:
                 grid_input.config(fg="red")    # Incorrect answer
@@ -247,9 +246,9 @@ def update_progress():
     global progress_percentage, num_to_remove
     correct_grids = 0
     total_grids = num_to_remove - hint_count
-    for row in range(grid_size):
-        for col in range(grid_size):
-            if (entries[(row, col)].get() == str(answers_grid[row][col]) and editable_grid[row][col] == 0):
+    for row in range(GRID_SIZE):
+        for col in range(GRID_SIZE):
+            if (entries[(row, col)].get() == str(ANSWERS_GRID[row][col]) and EDITABLE_GRID[row][col] == 0):
                 correct_grids += 1
     game_progress = correct_grids / total_grids
     if (total_grids > 0):
@@ -273,7 +272,7 @@ def save_game():
                 f.write("Editable\n")
                 save_editable_state(f)
                 f.write("Answer\n")
-                save_answers_grid(f)
+                save_ANSWERS_GRID(f)
                 f.write(f"Hints {hint_count}/{max_hint}\n")
                 f.write(f"Difficulty : {num_to_remove - hint_count}")                
             messagebox.showinfo("Save Game", "Game has been saved.")
@@ -284,25 +283,25 @@ def save_game():
 
 def save_grid(file):
     # Save progress
-    for row in range(grid_size):
-        for col in range(grid_size):
+    for row in range(GRID_SIZE):
+        for col in range(GRID_SIZE):
             save_value = entries[(row, col)].get() or "0"
             file.write(save_value + " ")
         file.write("\n")
 
 def save_editable_state(file):
     # Save editable state
-    for row in range(grid_size):
-        for col in range(grid_size):
-            save_edit = str(editable_grid[row][col]) 
+    for row in range(GRID_SIZE):
+        for col in range(GRID_SIZE):
+            save_edit = str(EDITABLE_GRID[row][col]) 
             file.write(save_edit + " ")
         file.write("\n")    
 
-def save_answers_grid(file):
+def save_ANSWERS_GRID(file):
     # Save answers
-    for row in range(grid_size):
-        for col in range(grid_size):
-            save_value = str(answers_grid[row][col])
+    for row in range(GRID_SIZE):
+        for col in range(GRID_SIZE):
+            save_value = str(ANSWERS_GRID[row][col])
             file.write(save_value + " ")
         file.write("\n")    
 
@@ -321,7 +320,7 @@ def load_game():
                 f.readline()
                 load_edit_state(f)    
                 f.readline()
-                load_answers_grid(f)
+                load_ANSWERS_GRID(f)
                 bind_entry_events()
                 load_hint(f)
                 global num_to_remove
@@ -342,9 +341,9 @@ def load_game():
 
 def load_grid(file):
     # Load saved grid
-    for row in range(grid_size):
+    for row in range(GRID_SIZE):
         line = file.readline().strip().split()
-        for col in range(grid_size):
+        for col in range(GRID_SIZE):
             value = line[col]
             entries[(row, col)].delete(0, tk.END) 
             if (value != "0"):
@@ -352,22 +351,22 @@ def load_grid(file):
 
 def load_edit_state(file):
     # Load editable state 
-    for row in range(grid_size):
+    for row in range(GRID_SIZE):
         line = file.readline().strip().split()
-        for col in range(grid_size):
+        for col in range(GRID_SIZE):
             editable_value = int(line[col])
-            editable_grid[row][col] = editable_value
+            EDITABLE_GRID[row][col] = editable_value
             if (editable_value) == 1:  
                 entries[(row, col)].config(state="readonly")
             else:
                 entries[(row, col)].config(state="normal")
 
-def load_answers_grid(file):
+def load_ANSWERS_GRID(file):
     # Load answers
-    for row in range(grid_size):
+    for row in range(GRID_SIZE):
         line = file.readline().strip().split()
-        for col in range(grid_size):
-            answers_grid[row][col] = int(line[col])   
+        for col in range(GRID_SIZE):
+            ANSWERS_GRID[row][col] = int(line[col])   
 
 def load_hint(file):
     # Load and update hint and max hints
@@ -377,11 +376,11 @@ def load_hint(file):
 
 def load_progress():
     # Load game progress
-    for row in range(grid_size):
-        for col in range(grid_size):
+    for row in range(GRID_SIZE):
+        for col in range(GRID_SIZE):
             load_input = entries[(row, col)].get()
-            if (load_input.isdigit() and editable_grid[row][col] == 0 ):
-                if (load_input == str(answers_grid[row][col])):
+            if (load_input.isdigit() and EDITABLE_GRID[row][col] == 0 ):
+                if (load_input == str(ANSWERS_GRID[row][col])):
                     entries[(row, col)].config(fg="green")
                 else:
                     entries[(row, col)].config(fg="red")
@@ -420,17 +419,16 @@ def reveal_grid():
     if (messagebox.askyesno("Reveal", "Are you sure to reveal and end the game?")):
         global is_revealed
         # Reveal correct answer
-        for row in range(grid_size):
-            for col in range(grid_size):
+        for row in range(GRID_SIZE):
+            for col in range(GRID_SIZE):
                 entries[(row, col)].config(state="normal")  # Make editable
                 entries[(row, col)].delete(0, tk.END)
-                entries[(row, col)].insert(0, answers_grid[row][col])  # Insert the original number
+                entries[(row, col)].insert(0, ANSWERS_GRID[row][col])  # Insert the original number
                 entries[(row, col)].config(state="readonly")
                 entries[(row, col)].config(fg="black")  # Lock after revealing
         progress_label.config(text=f"Progress : -.--%")
         game_buttons["reveal_button"].config(state="disabled") # Disable "Reveal" button
         game_buttons["save_button"].config(state="disabled") # Disable "Save game" button  
-        game_buttons["load_button"].config(state="disabled")
         game_buttons["hint_button"].config(state="disabled") # Disable "Load game" button
         is_revealed = True
     else:
@@ -438,8 +436,8 @@ def reveal_grid():
 
 def bind_entry_events():
     # Bind key release event to each entry widget to check for completion
-    for row in range(grid_size):
-        for col in range(grid_size):
+    for row in range(GRID_SIZE):
+        for col in range(GRID_SIZE):
             if (not entries[(row, col)].bind("<KeyRelease>")):
                 entries[(row, col)].bind("<KeyRelease>", on_entry_change)         
                 
@@ -450,50 +448,59 @@ def random_mode():
     reset_grid()
     fill_grid() 
     # Save the fully solved grid before removing any numbers
-    for row in range(grid_size):
-        for col in range(grid_size):
-            answers_grid[row][col] = int(entries[(row, col)].get())  # Save the number in the answers grid
+    for row in range(GRID_SIZE):
+        for col in range(GRID_SIZE):
+            ANSWERS_GRID[row][col] = int(entries[(row, col)].get())  # Save the number in the answers grid
     bind_entry_events()
+    game_buttons["reset_button"].config(state="normal") 
     game_buttons["reveal_button"].config(state="normal")  
     game_buttons["save_button"].config(state="normal") 
-    game_buttons["load_button"].config(state="disable") 
 
 def custom_mode():
-    # Custom mode (Input a number of grid to be removed)
+    # Custom mode (Input a hint and a number of grids to be removed)
     custom_mode_window = tk.Toplevel()
-    custom_mode_window.geometry("350x200")
+    custom_mode_window.geometry("350x250")
     custom_mode_window.resizable(False, False)
     custom_mode_window.title("Custom Mode")
     def entry_check(char):
-        if (len(char) <= 2):
+        if (char.isdigit() and len(char) <= 2):
             return True
         return False
     def get_remove_number():
+        remove_grid_count = int(custom_mode_entry.get())
+        hints = int(hint_entry.get())
         try:
-            remove_grid_count = int(custom_mode_entry.get())
-            if (0 < remove_grid_count < grid_size * grid_size):
-                random_mode()
-                remove_numbers(remove_grid_count)
-                custom_mode_window.destroy() 
+            if (0 < remove_grid_count < GRID_SIZE * GRID_SIZE):
+                if (hints < remove_grid_count):
+                    random_mode()
+                    remove_numbers(remove_grid_count, "custommode")
+                    custom_mode_window.destroy()
+                    if (hints == 0):
+                        global max_hint
+                        max_hint = 0
+                else:
+                    messagebox.showwarning("Error", f"Please enter hints lower than {remove_grid_count}")
             else:
-                messagebox.showwarning("Error", f"Please enter the number between 1 and {grid_size * grid_size - 1}")
-                custom_mode_entry.delete(0, tk.END)
+                messagebox.showwarning("Error", f"Please enter the number between 1 and {GRID_SIZE * GRID_SIZE - 1}")
         except ValueError:
-            messagebox.showwarning("Error", "Invaild input") 
+            messagebox.showwarning("Error", "Invaild input!")         
     vcmd = (custom_mode_window.register(entry_check), "%P")        
-    custom_mode_label = tk.Label(custom_mode_window, text="Enter a number of grids to be removed ", font=("Arial", 14))
-    custom_mode_entry = tk.Entry(custom_mode_window, font=("Arial", 14), width= 4, justify="center" ,validate="key", validatecommand=vcmd)
-    custom_mode_entry.bind("<Return>", lambda event: get_remove_number())
-    confirm_button = tk.Button(custom_mode_window, text="Start Game", font=("Arial", 14), command=get_remove_number)
+    custom_mode_label = tk.Label(custom_mode_window, text="Enter a number of grids to be removed ", font=("Arial", font_size))
+    custom_mode_entry = tk.Entry(custom_mode_window, font=("Arial", font_size), width= 4, justify="center" ,validate="key", validatecommand=vcmd)
+    hint_label = tk.Label(custom_mode_window, text="Enter a number of hints ", font=("Arial", font_size))
+    hint_entry = tk.Entry(custom_mode_window, font=("Arial", font_size), width= 4, justify="center" ,validate="key", validatecommand=vcmd)
+    confirm_button = tk.Button(custom_mode_window, text="Start Game", font=("Arial", font_size), command=get_remove_number)
     custom_mode_label.pack(pady=10)
     custom_mode_entry.pack(pady=10)
+    hint_label.pack(pady=10)
+    hint_entry.pack(pady=10)
     confirm_button.pack(pady=10)
 
 def difficulty_select():
     difficulty_name = [["Easy", (11, 30)], 
                        ["Normal", (31, 50)], 
                        ["Hard", (51, 70)], 
-                       ["Extreme", (71, grid_size * grid_size - 1)]]
+                       ["Extreme", (71, GRID_SIZE * GRID_SIZE - 1)]]
     difficulty_select_window = tk.Toplevel()
     difficulty_select_window.geometry("275x225")
     difficulty_select_window.resizable(False, False)
@@ -502,7 +509,7 @@ def difficulty_select():
     difficulty_select_label.grid(row=0, column=0, columnspan=2, padx=30, pady=20)
     for i, (label, difficulty_range) in enumerate(difficulty_name):
         difficulty_button = tk.Button(difficulty_select_window, text=label, font=("Arial", font_size), command=lambda range = difficulty_range:[random_mode(),
-                                                                                            remove_numbers(random.randint(range[0], range[1])),
+                                                                                            remove_numbers(random.randint(range[0], range[1]), "randommode"),
                                                                                             difficulty_select_window.destroy()])
         difficulty_button.grid(row=(1 + i // 2), column=(i % 2), padx=30, pady=10) 
 
@@ -516,6 +523,7 @@ def exit_game():
     
 def new_game_setting():
     # Choose to remove random or custom numbers to be removed
+    game_buttons["reset_button"].config(state="disabled")
     new_game_setting = tk.Toplevel()
     new_game_setting.geometry("350x250")
     new_game_setting.resizable(False, False)
