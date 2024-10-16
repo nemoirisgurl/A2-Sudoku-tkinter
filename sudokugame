@@ -463,21 +463,19 @@ def custom_mode():
     custom_mode_window.resizable(False, False)
     custom_mode_window.title("Custom Mode")
     def entry_check(char):
-        if (char.isdigit() and len(char) <= 2):
-            return True
+        if ((char.isdigit() or char == "") and len(char) <= 2 ):
+            return True   
         return False
     def get_remove_number():
-        remove_grid_count = int(custom_mode_entry.get())
-        hints = int(hint_entry.get())
         try:
+            remove_grid_count = int(custom_mode_entry.get())
+            global max_hint
+            max_hint = int(hint_entry.get())
             if (0 < remove_grid_count < GRID_SIZE * GRID_SIZE):
-                if (hints < remove_grid_count):
+                if (max_hint < remove_grid_count):
                     random_mode()
                     remove_numbers(remove_grid_count, "custommode")
                     custom_mode_window.destroy()
-                    if (hints == 0):
-                        global max_hint
-                        max_hint = 0
                 else:
                     messagebox.showwarning("Error", f"Please enter hints lower than {remove_grid_count}")
             else:
