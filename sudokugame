@@ -29,33 +29,32 @@ def resize_widget(event):
 
 def validate_input(char):
     # Allow only numbers 1-9
-    if char.isdigit() and 1 <= int(char) <= 9:
-        return True
-    elif char == "":
-        return True  # Allow clearing the entry
+    if (len(char) <= 1):
+        if (char.isdigit() and 1 <= int(char) <= 9 or char == ""):
+            return True  # Also allow clearing the entry
     return False
 
 def create_grid(parent):
     # Create a 9x9 Sudoku grid with border
     vcmd = (sudoku_game.register(validate_input), "%P")  # Register validation function
-    for i in range(grid_size):
-        for j in range(grid_size):
+    for row in range(grid_size):
+        for col in range(grid_size):
             # Alternate colors based on 3x3 blocks
-            entry_color = "light yellow" if (i // mini_grid_size + j // mini_grid_size) % 2 == 0 else "light blue"
-            top_border = 6 if i % mini_grid_size == 0 else 1 # Highlight
-            left_border = 6 if j % mini_grid_size == 0 else 1
-            bottom_border = 6 if i == grid_size - 1 else 1
-            right_border = 6 if j == grid_size - 1 else 1
+            entry_color = "light yellow" if (row // mini_grid_size + col // mini_grid_size) % 2 == 0 else "light blue"
+            top_border = 6 if row % mini_grid_size == 0 else 1 # Highlight
+            left_border = 6 if col % mini_grid_size == 0 else 1
+            bottom_border = 6 if row == grid_size - 1 else 1
+            right_border = 6 if col == grid_size - 1 else 1
             border = tk.Frame(parent, highlightbackground="black", highlightthickness=1)
-            border.grid(row=i, column=j, padx=(left_border, right_border), pady=(top_border, bottom_border))
+            border.grid(row=row, column=col, padx=(left_border, right_border), pady=(top_border, bottom_border))
             entry = tk.Entry(border, bg=entry_color, width=3, justify="center", font=("Arial", font_size + 8), validate="key", validatecommand=vcmd)
             entry.pack(padx=1, pady=1)
-            entries[(i, j)] = entry  # Store Entry widget
+            entries[(row, col)] = entry  # Store Entry widget
             for key, direction in [("<Up>", (-1, 0)), ("<Down>", (1, 0)), ("<Left>", (0, -1)), ("<Right>", (0, 1)),
                                    ("<w>", (-1, 0)), ("<s>", (1, 0)), ("<a>", (0, -1)), ("<d>", (0, 1)),
                                    ("<W>", (-1, 0)), ("<S>", (1, 0)), ("<A>", (0, -1)), ("<D>", (0, 1))]:
                                    # Change grid by using keyboard
-                entry.bind(key, lambda event, row=i, col=j, d=direction: move_grid(row + d[0], col + d[1]))
+                entry.bind(key, lambda event, row=row, col=col, d=direction: move_grid(row + d[0], col + d[1]))
 
 def move_grid(row, col):
     # Move focus to a specific cell, ensuring the row and column stay within bounds
@@ -107,13 +106,11 @@ def fill_grid():
             answers_grid[row][col] = 0  # Clear the answer in case of backtrack
     return False  # Trigger backtracking
 
-def remove_numbers(remove_grid_count=None): 
+def remove_numbers(remove_grid_count): 
     # Remove numbers from grid
     global hint_count, max_hint, num_to_remove
-    if (remove_grid_count is None):
-        num_to_remove = random.randint(20, 60) # Random mode
-    else:
-        num_to_remove = remove_grid_count # Custom mode 
+    print(f"{remove_grid_count} grids has been removed")
+    num_to_remove = remove_grid_count # Remove numbers
     if (num_to_remove // 10 <= 0):
         max_hint = 0     
     else:
@@ -167,6 +164,7 @@ def reset_grid():
     progress_label.config(text=f"Progress : {progress_percentage:.2f}%")
     progress_bar["value"] = progress_percentage  
     game_buttons["reveal_button"].config(text="Reveal", state="disable", command=reveal_grid)      
+    game_buttons["load_button"].config(state="normal")
 
 def is_grid_empty():
     # Check if all cells are empty
@@ -214,7 +212,6 @@ def check_completion():
         progress_label.config(text=f"Progress : {100:.2f}%")
         game_buttons["reveal_button"].config(text="Clear", command=reset_grid)
         game_buttons["save_button"].config(state="disabled")
-        game_buttons["load_button"].config(state="normal")
         # Clear grid
 
 def on_entry_change(event):
@@ -327,12 +324,12 @@ def load_game():
                 load_answers_grid(f)
                 bind_entry_events()
                 load_hint(f)
-                ##print(f.readline().split(" : "))
                 global num_to_remove
                 num_to_remove = int(f.readline().split(" : ")[1])
                 load_progress()
             messagebox.showinfo("Load Game", "Game successfully loaded.")
             game_buttons["save_button"].config(state="normal")
+            game_buttons["load_button"].config(state="normal")
             game_buttons["reveal_button"].config(state="normal")
             if (hint_count < max_hint):
                 game_buttons["hint_button"].config(state="normal") 
@@ -430,11 +427,11 @@ def reveal_grid():
                 entries[(row, col)].insert(0, answers_grid[row][col])  # Insert the original number
                 entries[(row, col)].config(state="readonly")
                 entries[(row, col)].config(fg="black")  # Lock after revealing
-        progress_bar["value"] = 0
-        progress_label.config(text=f"Progress : {0:.2f}%")
-        game_buttons["reveal_button"].config(text="Clear", state="normal", command=reset_grid) # Disable "Reveal" button
+        progress_label.config(text=f"Progress : -.--%")
+        game_buttons["reveal_button"].config(state="disabled") # Disable "Reveal" button
         game_buttons["save_button"].config(state="disabled") # Disable "Save game" button  
-        game_buttons["load_button"].config(state="disabled") # Disable "Load game" button
+        game_buttons["load_button"].config(state="disabled")
+        game_buttons["hint_button"].config(state="disabled") # Disable "Load game" button
         is_revealed = True
     else:
         return
@@ -467,6 +464,10 @@ def custom_mode():
     custom_mode_window.geometry("350x200")
     custom_mode_window.resizable(False, False)
     custom_mode_window.title("Custom Mode")
+    def entry_check(char):
+        if (len(char) <= 2):
+            return True
+        return False
     def get_remove_number():
         try:
             remove_grid_count = int(custom_mode_entry.get())
@@ -475,20 +476,39 @@ def custom_mode():
                 remove_numbers(remove_grid_count)
                 custom_mode_window.destroy() 
             else:
-                messagebox.showwarning("Error", f"Please enter the number between 0 and {grid_size * grid_size}")
+                messagebox.showwarning("Error", f"Please enter the number between 1 and {grid_size * grid_size - 1}")
+                custom_mode_entry.delete(0, tk.END)
         except ValueError:
             messagebox.showwarning("Error", "Invaild input") 
+    vcmd = (custom_mode_window.register(entry_check), "%P")        
     custom_mode_label = tk.Label(custom_mode_window, text="Enter a number of grids to be removed ", font=("Arial", 14))
-    custom_mode_entry = tk.Entry(custom_mode_window, font=("Arial", 14), width= 3, justify="center")
+    custom_mode_entry = tk.Entry(custom_mode_window, font=("Arial", 14), width= 4, justify="center" ,validate="key", validatecommand=vcmd)
     custom_mode_entry.bind("<Return>", lambda event: get_remove_number())
     confirm_button = tk.Button(custom_mode_window, text="Start Game", font=("Arial", 14), command=get_remove_number)
     custom_mode_label.pack(pady=10)
     custom_mode_entry.pack(pady=10)
     confirm_button.pack(pady=10)
-  
+
+def difficulty_select():
+    difficulty_name = [["Easy", (11, 30)], 
+                       ["Normal", (31, 50)], 
+                       ["Hard", (51, 70)], 
+                       ["Extreme", (71, grid_size * grid_size - 1)]]
+    difficulty_select_window = tk.Toplevel()
+    difficulty_select_window.geometry("275x225")
+    difficulty_select_window.resizable(False, False)
+    difficulty_select_window.title("Choose difficulty")
+    difficulty_select_label= tk.Label(difficulty_select_window, text="Choose difficulty", font=("Arial", font_size + 8))
+    difficulty_select_label.grid(row=0, column=0, columnspan=2, padx=30, pady=20)
+    for i, (label, difficulty_range) in enumerate(difficulty_name):
+        difficulty_button = tk.Button(difficulty_select_window, text=label, font=("Arial", font_size), command=lambda range = difficulty_range:[random_mode(),
+                                                                                            remove_numbers(random.randint(range[0], range[1])),
+                                                                                            difficulty_select_window.destroy()])
+        difficulty_button.grid(row=(1 + i // 2), column=(i % 2), padx=30, pady=10) 
+
 def exit_game():
     # Exit game
-    is_quit = messagebox.askyesno("Quit", "Are you sure to quit? Your game progress will not be saved.")
+    is_quit = messagebox.askyesno("Quit", "Are you sure to quit?\nYour game progress will not be saved.")
     if (is_quit):
         sudoku_game.destroy()
     else:
@@ -498,13 +518,18 @@ def new_game_setting():
     # Choose to remove random or custom numbers to be removed
     new_game_setting = tk.Toplevel()
     new_game_setting.geometry("350x250")
+    new_game_setting.resizable(False, False)
     new_game_setting.title("New Game")
     mode_selection = tk.Label(new_game_setting, text="Choose mode", font=("Arial", font_size + 8))
-    random_mode_button = tk.Button(new_game_setting, text="Random", font=("Arial", font_size), command=lambda:[random_mode(), remove_numbers(), new_game_setting.destroy()])
+    random_mode_button = tk.Button(new_game_setting, text="Random", font=("Arial", font_size), command=lambda:[difficulty_select(), new_game_setting.destroy()])
+    random_mode_label = tk.Label(new_game_setting, text="Will select difficulty", font=("Arial", font_size - 2))
     custom_mode_button = tk.Button(new_game_setting, text="Custom", font=("Arial", font_size), command=lambda:[custom_mode(), new_game_setting.destroy()])
-    mode_selection.pack(pady=10)
-    random_mode_button.pack(pady=10)
-    custom_mode_button.pack(pady=10)
+    custom_mode_label = tk.Label(new_game_setting, text="Will remove a certain number of grids", font=("Arial", font_size - 2))
+    mode_selection.pack(pady=5)
+    random_mode_button.pack(pady=5)
+    random_mode_label.pack(pady=5)
+    custom_mode_button.pack(pady=5)
+    custom_mode_label.pack(pady=5)
     new_game_setting.wait_window()
   
 def main():
