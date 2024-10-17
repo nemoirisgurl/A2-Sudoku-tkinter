@@ -376,6 +376,8 @@ class SudokuGame:
         # Load and update hint and max hints
         hint_line = file.readline().strip().split()
         self.hint_count, self.max_hint = map(int, hint_line[1].split("/"))
+        if (self.hint_count >= self.max_hint):
+            self.game_buttons["reveal_button"].config(state="disabled")
 
     def load_progress(self):
         # Load game progress
