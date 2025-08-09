@@ -7,20 +7,22 @@ class SudokuGame:
     def __init__(self, root):
         self.root = root
         self.GRID_SIZE, self.MINI_GRID_SIZE = 9, 3
-        #self.ANSWERS_GRID = [[0] * self.GRID_SIZE for _ in range(self.GRID_SIZE)]  # Store original grid
-        #self.EDITABLE_GRID = [[0] * self.GRID_SIZE for _ in range(self.GRID_SIZE)]  # Track editable states (0 = editable, 1 = read-only)
+        self.ANSWERS_GRID = [[0] * self.GRID_SIZE for _ in range(self.GRID_SIZE)]  # Store original grid
+        self.EDITABLE_GRID = [[0] * self.GRID_SIZE for _ in range(self.GRID_SIZE)]  # Track editable states (0 = editable, 1 = read-only)
         self.is_revealed = False
-        self.entries = {}
+        self.entries = [[0 for _ in range(self.GRID_SIZE)] for _ in range(self.GRID_SIZE)]  # Store Entry widgets
         self.hint_count , self.max_hint = 0, 0 
         self.font_size, self.button_size, self.progress_bar_size = 6, 1, 300 # Default
         self.progress_percentage = 0
         self.button_pad_y = 3
         self.num_to_remove = 0
+        self.grid_gap = 4
 
     def resize_grid(self):
         # Resize grid based on GRID_SIZE
         self.ANSWERS_GRID = [[0] * self.GRID_SIZE for _ in range(self.GRID_SIZE)] # Reset answers grid
         self.EDITABLE_GRID = [[0] * self.GRID_SIZE for _ in range(self.GRID_SIZE)] 
+        self.entries = [[0 for _ in range(self.GRID_SIZE)] for _ in range(self.GRID_SIZE)]  # Reset Entry widgets
         
     def validate_input(self, char):
     # Allow only numbers 1-16
@@ -36,15 +38,15 @@ class SudokuGame:
             for col in range(self.GRID_SIZE):
                 # Alternate colors based on blocks
                 entry_color = "light yellow" if (row // self.MINI_GRID_SIZE + col // self.MINI_GRID_SIZE) % 2 == 0 else "light blue"
-                top_border = 6 if row % self.MINI_GRID_SIZE == 0 else 1 # Highlight
-                left_border = 6 if col % self.MINI_GRID_SIZE == 0 else 1
-                bottom_border = 6 if row == self.GRID_SIZE - 1 else 1
-                right_border = 6 if col == self.GRID_SIZE - 1 else 1
+                top_border = self.grid_gap if row % self.MINI_GRID_SIZE == 0 else 1 # Highlight
+                left_border = self.grid_gap if col % self.MINI_GRID_SIZE == 0 else 1
+                bottom_border = self.grid_gap if row == self.GRID_SIZE - 1 else 1
+                right_border = self.grid_gap if col == self.GRID_SIZE - 1 else 1
                 border = tk.Frame(parent, highlightbackground="black", highlightthickness=1)
                 border.grid(row=row, column=col, padx=(left_border, right_border), pady=(top_border, bottom_border))
                 entry = tk.Entry(border, bg=entry_color, width=3, justify="center", font=("Arial", self.font_size + 8), validate="key", validatecommand=vcmd)
                 entry.pack(padx=1, pady=1)
-                self.entries[(row, col)] = entry  # Store Entry widget
+                self.entries[row][col] = entry  # Store Entry widget
                 for key, direction in [("<Up>", (-1, 0)), ("<Down>", (1, 0)), ("<Left>", (0, -1)), ("<Right>", (0, 1)),
                                     ("<w>", (-1, 0)), ("<s>", (1, 0)), ("<a>", (0, -1)), ("<d>", (0, 1)),
                                     ("<W>", (-1, 0)), ("<S>", (1, 0)), ("<A>", (0, -1)), ("<D>", (0, 1))]:
@@ -52,32 +54,38 @@ class SudokuGame:
                     entry.bind(key, lambda _, row=row, col=col, d=direction: self.move_grid(row + d[0], col + d[1])) 
 
     def recreate_grid(self):
-        for widget in self.top_frame.winfo_children():
-            widget.destroy()
-        self.entries.clear()  # Clear existing entries
-        self.create_grid(self.top_frame)
+        if (len(self.entries) != self.GRID_SIZE or len(self.entries[0])):
+            for widget in self.top_frame.winfo_children():
+                widget.destroy() # Clear existing entries
+            self.entries = [[0 for _ in range(self.GRID_SIZE)] for _ in range(self.GRID_SIZE)]  # Reinitialize entries
+            self.create_grid(self.top_frame)
+        else: 
+            for row in range(self.GRID_SIZE):
+                for col in range(self.GRID_SIZE):
+                    self.entries[row][col].config(state="normal", fg="black")
+                    self.entries[row][col].delete(0, tk.END)
     
     def move_grid(self, row, col):
     # Move focus to a specific cell, ensuring the row and column stay within bounds
         if (0 <= row < self.GRID_SIZE and 0 <= col < self.GRID_SIZE):
-            self.entries[(row, col)].focus_set()
+            self.entries[row][col].focus_set()
 
     def check_possible_num(self, num, row, col):
     # Check if the number can be placed in the (row, col) position
         for j in range(self.GRID_SIZE):
-            if (self.entries[(row, j)].get() == str(num) or self.entries[(j, col)].get() == str(num)):
+            if (self.entries[row][j].get() == str(num) or self.entries[j][col].get() == str(num)):
                 return False
         start_row = (row // self.MINI_GRID_SIZE) * self.MINI_GRID_SIZE
         start_col = (col // self.MINI_GRID_SIZE) * self.MINI_GRID_SIZE
         for i in range(self.MINI_GRID_SIZE):
             for j in range(self.MINI_GRID_SIZE):
-                if (self.entries[(start_row + i, start_col + j)].get() == str(num)):
+                if (self.entries[start_row + i][start_col + j].get() == str(num)):
                     return False
         return True 
     
     def is_empty(self, row, col):
     # Check if a given cell is empty
-        return self.entries[(row, col)].get() == ""
+        return self.entries[row][col].get() == ""
     
     def find_empty_spot(self):
     # Find the first empty spot in the grid
@@ -97,13 +105,13 @@ class SudokuGame:
         random.shuffle(possible_num)  # Shuffle to add randomness
         for num in possible_num:
             if (self.check_possible_num(num, row, col)):
-                self.entries[(row, col)].delete(0, tk.END)
-                self.entries[(row, col)].insert(0, num)
+                self.entries[row][col].delete(0, tk.END)
+                self.entries[row][col].insert(0, num)
                 self.ANSWERS_GRID[row][col] = num  # Store the number in the answers grid
                 if (self.fill_grid()):  # Recursively fill the next spot
                     return True
                 # If filling with this number doesn't work, backtrack
-                self.entries[(row, col)].delete(0, tk.END)
+                self.entries[row][col].delete(0, tk.END)
                 self.ANSWERS_GRID[row][col] = 0  # Clear the answer in case of backtrack
         return False  # Trigger backtracking
 
@@ -121,15 +129,15 @@ class SudokuGame:
         # Remove numbers from a random set of cells
         for i in range(self.num_to_remove):
             row, col = all_cells[i]
-            self.entries[(row, col)].delete(0, tk.END)
+            self.entries[row][col].delete(0, tk.END)
         self.lock_initial_numbers()
 
     def lock_initial_numbers(self):
     # Lock the initially filled numbers and update the editable grid
         for row in range(self.GRID_SIZE):
             for col in range(self.GRID_SIZE):
-                if self.entries[(row, col)].get() != "":
-                    self.entries[(row, col)].config(state="readonly")  # Lock the entry
+                if self.entries[row][col].get() != "":
+                    self.entries[row][col].config(state="readonly")  # Lock the entry
                     self.EDITABLE_GRID[row][col] = 1  # Mark as read-only
                 else:
                     self.EDITABLE_GRID[row][col] = 0  # Mark as editable   
@@ -141,9 +149,9 @@ class SudokuGame:
                 empty_grids = [(row, col) for row in range(self.GRID_SIZE) for col in range(self.GRID_SIZE) if self.is_empty(row, col)]
                 if (empty_grids):
                     row, col = random.choice(empty_grids)
-                    self.entries[(row, col)].delete(0, tk.END)
-                    self.entries[(row, col)].insert(0, self.ANSWERS_GRID[row][col])
-                    self.entries[(row, col)].config(state="readonly")
+                    self.entries[row][col].delete(0, tk.END)
+                    self.entries[row][col].insert(0, self.ANSWERS_GRID[row][col])
+                    self.entries[row][col].config(state="readonly")
                     self.EDITABLE_GRID[row][col] = 1
                     self.hint_count += 1
                     self.update_progress()
@@ -155,9 +163,9 @@ class SudokuGame:
     # Clear the grid for a new game
         for row in range(self.GRID_SIZE):
             for col in range(self.GRID_SIZE):
-                self.entries[(row, col)].config(state="normal", fg="black")  
-                self.entries[(row, col)].delete(0, tk.END)
-                #self.ANSWERS_GRID[row][col] = 0
+                self.entries[row][col].config(state="normal", fg="black")  
+                self.entries[row][col].delete(0, tk.END)
+                self.ANSWERS_GRID[row][col] = 0
         self.progress_percentage = 0
         self.progress_label.config(text=f"Progress : {self.progress_percentage:.2f}%")
         self.progress_bar["value"] = self.progress_percentage  
@@ -174,19 +182,18 @@ class SudokuGame:
 
     def check_win(self):
     # Check if the current grid is a valid Sudoku solution
+        valid_nums = set(str(i) for i in range(1, self.GRID_SIZE + 1))
         for row in range(self.GRID_SIZE):
             row_nums = set()
             col_nums = set()
             for col in range(self.GRID_SIZE):
-                row_val = self.entries[(row, col)].get()
-                col_val = self.entries[(col, row)].get()
-                if (row_val == "" or col_val == ""):
+                row_val = self.entries[row][col].get()
+                col_val = self.entries[col][row].get()  
+                if (row_val not in valid_nums or row_val in row_nums): 
                     return False  
-                if (row_val in row_nums or not row_val.isdigit() or int(row_val) not in range(1, 10)): 
+                if (col_val not in valid_nums or col_val in col_nums):
                     return False  
                 row_nums.add(row_val)
-                if (col_val in col_nums or not col_val.isdigit() or int(col_val) not in range(1, 10)):
-                    return False  
                 col_nums.add(col_val)
         # Check 3x3 blocks
         for block_row in range(0, self.GRID_SIZE, self.MINI_GRID_SIZE):
@@ -194,8 +201,8 @@ class SudokuGame:
                 block_nums = set()
                 for i in range(self.MINI_GRID_SIZE):
                     for j in range(self.MINI_GRID_SIZE):
-                        block_val = self.entries[(block_row + i, block_col + j)].get()
-                        if block_val in block_nums:
+                        block_val = self.entries[block_row + i][block_col + j].get()
+                        if block_val in block_nums or block_val not in valid_nums:
                             return False  # Duplicates in block
                         block_nums.add(block_val)
         return True 
@@ -205,7 +212,7 @@ class SudokuGame:
         if (self.check_win()):
             for row in range(self.GRID_SIZE):
                 for col in range(self.GRID_SIZE):
-                    self.entries[(row, col)].config(fg="black")
+                    self.entries[row][col].config(fg="black")
             messagebox.showinfo("Victory", "You solved the puzzle!")
             self.progress_label.config(text=f"Progress : {100:.2f}%")
             self.game_buttons["reveal_button"].config(text="Clear", command=self.reset_grid)
@@ -217,9 +224,14 @@ class SudokuGame:
         if (self.is_revealed):
             return
         grid_input = event.widget
-        for (row, col), entry in self.entries.items():
-            if entry == grid_input:
-                break       
+        is_found = False
+        for row in range(self.GRID_SIZE):
+            for col in range(self.GRID_SIZE):
+                if (self.entries[row][col] == grid_input):
+                    is_found = True
+                    break
+            if (is_found):
+                break      
         if (self.ANSWERS_GRID[row][col] != 0 and self.EDITABLE_GRID[row][col] == 0):
             # Check answer on each grid
             pass
@@ -246,7 +258,7 @@ class SudokuGame:
         total_grids = self.num_to_remove - self.hint_count
         for row in range(self.GRID_SIZE):
             for col in range(self.GRID_SIZE):
-                if (self.entries[(row, col)].get() == str(self.ANSWERS_GRID[row][col]) and self.EDITABLE_GRID[row][col] == 0):
+                if (self.entries[row][col].get() == str(self.ANSWERS_GRID[row][col]) and self.EDITABLE_GRID[row][col] == 0):
                     correct_grids += 1
         game_progress = correct_grids / total_grids
         if (total_grids > 0):
@@ -285,7 +297,7 @@ class SudokuGame:
         # Save progress
         for row in range(self.GRID_SIZE):
             for col in range(self.GRID_SIZE):
-                save_value = self.entries[(row, col)].get() or "0"
+                save_value = self.entries[row][col].get() or "0"
                 file.write(save_value + " ")
             file.write("\n")
 
@@ -348,9 +360,9 @@ class SudokuGame:
             line = file.readline().strip().split()
             for col in range(self.GRID_SIZE):
                 value = line[col]
-                self.entries[(row, col)].delete(0, tk.END) 
+                self.entries[row][col].delete(0, tk.END) 
                 if (value != "0"):
-                    self.entries[(row, col)].insert(0, value)
+                    self.entries[row][col].insert(0, value)
 
     def load_edit_state(self, file):
         # Load editable state 
@@ -360,9 +372,9 @@ class SudokuGame:
                 editable_value = int(line[col])
                 self.EDITABLE_GRID[row][col] = editable_value
                 if (editable_value) == 1:  
-                    self.entries[(row, col)].config(state="readonly")
+                    self.entries[row][col].config(state="readonly")
                 else:
-                    self.entries[(row, col)].config(state="normal")
+                    self.entries[row][col].config(state="normal")
 
     def load_answers_grid(self, file):
         # Load answers
@@ -380,8 +392,7 @@ class SudokuGame:
     def load_progress(self):
         # Load game progress
         self.update_progress()
-        self.update_progress()
-
+        
     def show_game_buttons(self, parent): 
     # Game button
         self.game_buttons = {}
@@ -413,11 +424,11 @@ class SudokuGame:
             # Reveal correct answer
             for row in range(self.GRID_SIZE):
                 for col in range(self.GRID_SIZE):
-                    self.entries[(row, col)].config(state="normal")  # Make editable
-                    self.entries[(row, col)].delete(0, tk.END)
-                    self.entries[(row, col)].insert(0, self.ANSWERS_GRID[row][col])  # Insert the original number
-                    self.entries[(row, col)].config(state="readonly")
-                    self.entries[(row, col)].config(fg="black")  # Lock after revealing
+                    self.entries[row][col].config(state="normal")  # Make editable
+                    self.entries[row][col].delete(0, tk.END)
+                    self.entries[row][col].insert(0, self.ANSWERS_GRID[row][col])  # Insert the original number
+                    self.entries[row][col].config(state="readonly")
+                    self.entries[row][col].config(fg="black")  # Lock after revealing
             self.progress_bar["value"] = 0        
             self.progress_label.config(text=f"Progress : -.--%")
             self.game_buttons["reveal_button"].config(state="disabled") # Disable "Reveal" button
@@ -431,8 +442,8 @@ class SudokuGame:
     # Bind key release event to each entry widget to check for completion
         for row in range(self.GRID_SIZE):
             for col in range(self.GRID_SIZE):
-                if (not self.entries[(row, col)].bind("<KeyRelease>")):
-                    self.entries[(row, col)].bind("<KeyRelease>", self.on_entry_change)       
+                if (not self.entries[row][col].bind("<KeyRelease>")):
+                    self.entries[row][col].bind("<KeyRelease>", self.on_entry_change)       
 
     def random_mode(self):
     # Random mode (Reset grid then generate new Sudoku)
@@ -444,7 +455,7 @@ class SudokuGame:
         # Save the fully solved grid before removing any numbers
         for row in range(self.GRID_SIZE):
             for col in range(self.GRID_SIZE):
-                self.ANSWERS_GRID[row][col] = int(self.entries[(row, col)].get())  # Save the number in the answers grid
+                self.ANSWERS_GRID[row][col] = int(self.entries[row][col].get())  # Save the number in the answers grid
         self.bind_entry_events()
         self.game_buttons["new_game_button"].config(state="normal") 
         self.game_buttons["reveal_button"].config(state="normal")  
@@ -489,26 +500,24 @@ class SudokuGame:
         confirm_button.pack(pady=self.button_pad_y * 2)
 
     def difficulty_select(self):
-        if (self.GRID_SIZE == 4):
-            difficulty_name = [["Easy", ((self.GRID_SIZE - 2) * (self.GRID_SIZE - 2), (self.GRID_SIZE - 1) * (self.GRID_SIZE - 2) - 1)], 
-                                ["Normal", ((self.GRID_SIZE - 1) * (self.GRID_SIZE - 2), (self.GRID_SIZE - 1) * (self.GRID_SIZE - 1) - 1)], 
-                                ["Hard", ((self.GRID_SIZE - 1) * (self.GRID_SIZE - 1), self.GRID_SIZE * (self.GRID_SIZE - 1) - 1)], 
-                                ["Extreme", (self.GRID_SIZE * (self.GRID_SIZE - 1), (self.GRID_SIZE * self.GRID_SIZE) - 1)]]
-        elif (self.GRID_SIZE == 9):
-            difficulty_name = [["Easy", ((self.GRID_SIZE - 4) * (self.GRID_SIZE - 4), (self.GRID_SIZE - 2) * (self.GRID_SIZE - 4) - 1)], 
-                                ["Normal", ((self.GRID_SIZE - 2) * (self.GRID_SIZE - 4), (self.GRID_SIZE - 2) * (self.GRID_SIZE - 2) - 1)], 
-                                ["Hard", ((self.GRID_SIZE - 2) * (self.GRID_SIZE - 2), self.GRID_SIZE * (self.GRID_SIZE - 2) - 1)], 
-                                ["Extreme", (self.GRID_SIZE * (self.GRID_SIZE - 2), (self.GRID_SIZE * self.GRID_SIZE) - 1)]]
-        elif (self.GRID_SIZE == 16):
-            difficulty_name = [["Easy", ((self.GRID_SIZE - 8) * (self.GRID_SIZE - 8), (self.GRID_SIZE - 4) * (self.GRID_SIZE - 8) - 1)], 
-                                ["Normal", ((self.GRID_SIZE - 4) * (self.GRID_SIZE - 8), (self.GRID_SIZE - 4) * (self.GRID_SIZE - 4) - 1)], 
-                                ["Hard", ((self.GRID_SIZE - 4) * (self.GRID_SIZE - 4), self.GRID_SIZE * (self.GRID_SIZE - 4) - 1)], 
-                                ["Extreme", (self.GRID_SIZE * (self.GRID_SIZE - 4), (self.GRID_SIZE * self.GRID_SIZE) - 1)]]
+        if (self.GRID_SIZE == 4 or self.GRID_SIZE == 9 or self.GRID_SIZE == 16 or self.GRID_SIZE == 25): 
+            removed_grid_limit = (self.GRID_SIZE ** 2) - 1 
+            easy_mode_range = (removed_grid_limit * (25 / 100), removed_grid_limit * (35 / 100) - 1)
+            medium_mode_range = ((easy_mode_range[1] + 1), removed_grid_limit * (45 / 100) - 1)
+            hard_mode_range = ((medium_mode_range[1] + 1), removed_grid_limit * (60 / 100) - 1)
+            extreme_mode_range = ((hard_mode_range[1] + 1), removed_grid_limit * (80 / 100))
+            random_mode_range = (easy_mode_range[0], extreme_mode_range[1])
+            difficulty_name = [(f"Easy removes {easy_mode_range} grids.", easy_mode_range),
+                               (f"Medium removes {medium_mode_range} grids", medium_mode_range),
+                               (f"Hard {hard_mode_range} grids", hard_mode_range),
+                               (f"Extreme {extreme_mode_range} grids", extreme_mode_range),
+                               (f"Random", random_mode_range)]
         else:
             messagebox.showwarning("Error", "Please select a valid grid size before choosing difficulty.")
             return
+        
         difficulty_select_window = tk.Toplevel()
-        difficulty_select_window.geometry("275x225")
+        difficulty_select_window.geometry("550x450")
         difficulty_select_window.resizable(False, False)
         difficulty_select_window.title("Choose difficulty")
         difficulty_select_window.protocol("WM_DELETE_WINDOW", lambda: [self.close_window(), difficulty_select_window.destroy()])
@@ -516,7 +525,7 @@ class SudokuGame:
         difficulty_select_label.grid(row=0, column=0, columnspan=2, padx=30, pady=20)
         for i, (label, difficulty_range) in enumerate(difficulty_name):
             difficulty_button = tk.Button(difficulty_select_window, text=label, font=("Arial", self.font_size * 2), command=lambda range = difficulty_range:[self.random_mode(),
-                                                                                                self.remove_numbers(random.randint(range[0], range[1]), "randommode"),
+                                                                                                self.remove_numbers(random.randint(int(range[0]), int(range[1])), "randommode"),
                                                                                                 difficulty_select_window.destroy()])
             difficulty_button.grid(row=(1 + i // 2), column=(i % 2), padx=30, pady=10)
 
@@ -540,13 +549,13 @@ class SudokuGame:
         grid_size_selection.resizable(False, False)
         grid_size_selection.title("Grid Size Selection")
         grid_size_selection_label = tk.Label(grid_size_selection, text="Choose grid size", font=("Arial", self.font_size + 8))
-        four_by_four_button = tk.Button(grid_size_selection, text="4x4", font=("Arial", self.font_size * 2), command=lambda:[setattr(self, "GRID_SIZE", 4), setattr(self, "MINI_GRID_SIZE", 2), grid_size_selection.destroy(), mode_selection()])
-        nine_by_nine_button = tk.Button(grid_size_selection, text="9x9", font=("Arial", self.font_size * 2), command=lambda:[setattr(self, "GRID_SIZE", 9), setattr(self, "MINI_GRID_SIZE", 3), grid_size_selection.destroy(), mode_selection()])
-        sixteen_by_sixteen_button = tk.Button(grid_size_selection, text="16x16", font=("Arial", self.font_size * 2), command=lambda:[setattr(self, "GRID_SIZE", 16), setattr(self, "MINI_GRID_SIZE", 4), grid_size_selection.destroy(), mode_selection()])
+        grid_size_buttons = [tk.Button(grid_size_selection, text="4x4", font=("Arial", self.font_size * 2), command=lambda:[setattr(self, "GRID_SIZE", 4), setattr(self, "MINI_GRID_SIZE", 2), grid_size_selection.destroy(), mode_selection()]),
+                             tk.Button(grid_size_selection, text="9x9", font=("Arial", self.font_size * 2), command=lambda:[setattr(self, "GRID_SIZE", 9), setattr(self, "MINI_GRID_SIZE", 3), grid_size_selection.destroy(), mode_selection()]),
+                             tk.Button(grid_size_selection, text="16x16", font=("Arial", self.font_size * 2), command=lambda:[setattr(self, "GRID_SIZE", 16), setattr(self, "MINI_GRID_SIZE", 4), grid_size_selection.destroy(), mode_selection()]),
+                             tk.Button(grid_size_selection, text="25x25", font=("Arial", self.font_size * 2), command=lambda:[setattr(self, "GRID_SIZE", 25), setattr(self, "MINI_GRID_SIZE", 5), grid_size_selection.destroy(), mode_selection()])]
         grid_size_selection_label.pack(pady=self.button_pad_y * 2)
-        four_by_four_button.pack(pady=self.button_pad_y * 2)
-        nine_by_nine_button.pack(pady=self.button_pad_y * 2)
-        sixteen_by_sixteen_button.pack(pady=self.button_pad_y * 2)
+        for button in grid_size_buttons:
+            button.pack(pady=self.button_pad_y)
         grid_size_selection.protocol("WM_DELETE_WINDOW", lambda: [self.close_window(), grid_size_selection.destroy()])
         def mode_selection():
             grid_size_selection.destroy()
@@ -564,7 +573,7 @@ class SudokuGame:
             random_mode_label.pack(pady=self.button_pad_y)
             custom_mode_button.pack(pady=self.button_pad_y)
             custom_mode_label.pack(pady=self.button_pad_y)
-            new_game_setting.protocol("WM_DELETE_WINDOW", lambda: [self.close_window(), grid_size_selection.destroy()])
+            new_game_setting.protocol("WM_DELETE_WINDOW", lambda: [new_game_setting.destroy(), self.close_window()])
 
     def main(self):
     # Main function of Sudoku game
