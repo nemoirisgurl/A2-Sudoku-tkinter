@@ -17,6 +17,8 @@ class SudokuGame:
         self.button_pad_y = 3
         self.num_to_remove = 0
         self.grid_gap = 4
+        self.primary_color = "light blue"
+        self.secondary_color = "light yellow"
 
     def resize_grid(self):
         # Resize grid based on GRID_SIZE
@@ -37,7 +39,7 @@ class SudokuGame:
         for row in range(self.GRID_SIZE):
             for col in range(self.GRID_SIZE):
                 # Alternate colors based on blocks
-                entry_color = "light yellow" if (row // self.MINI_GRID_SIZE + col // self.MINI_GRID_SIZE) % 2 == 0 else "light blue"
+                entry_color = self.primary_color if (row // self.MINI_GRID_SIZE + col // self.MINI_GRID_SIZE) % 2 == 0 else self.secondary_color
                 top_border = self.grid_gap if row % self.MINI_GRID_SIZE == 0 else 1 # Highlight
                 left_border = self.grid_gap if col % self.MINI_GRID_SIZE == 0 else 1
                 bottom_border = self.grid_gap if row == self.GRID_SIZE - 1 else 1
@@ -171,6 +173,7 @@ class SudokuGame:
         self.progress_bar["value"] = self.progress_percentage  
         self.game_buttons["reveal_button"].config(text="Reveal", state="disable", command=self.reveal_grid)      
         self.game_buttons["load_button"].config(state="normal")  
+        self.game_buttons["appearance"].config(state="normal")
 
     def is_grid_empty(self):
     # Check if all cells are empty
@@ -345,6 +348,7 @@ class SudokuGame:
                 self.game_buttons["save_button"].config(state="normal")
                 self.game_buttons["load_button"].config(state="normal")
                 self.game_buttons["reveal_button"].config(state="normal")
+                self.game_buttons["appearance"].config(state="disabled")
                 if (self.hint_count < self.max_hint):
                     self.game_buttons["hint_button"].config(state="normal") 
             else:
@@ -403,6 +407,7 @@ class SudokuGame:
         self.game_buttons['load_button'] = tk.Button(parent, text="Load game", font=("Arial", self.font_size * 2), command=self.load_game)
         self.game_buttons['hint_button'] = tk.Button(parent, text="Hint", font=("Arial", self.font_size * 2), command=self.hint, state="disabled")
         self.game_buttons['instruction_button'] = tk.Button(parent, text="Instruction", font=("Arial", self.font_size * 2), command=self.instruction)
+        self.game_buttons['appearance'] = tk.Button(parent, text="Appearance", font=("Arial", self.font_size * 2), command=self.change_appearence)
         self.game_buttons['exit_button'] = tk.Button(parent, text="Quit game", font=("Arial", self.font_size * 2), command=self.exit_game)
         self.game_buttons['new_game_button'].grid(row=1, column=0, padx=5, pady=10)
         self.game_buttons['load_button'].grid(row=1, column=1, padx=5, pady=10)
@@ -410,6 +415,7 @@ class SudokuGame:
         self.game_buttons['hint_button'].grid(row=1, column=3, padx=5, pady=10)
         self.game_buttons['reveal_button'].grid(row=1, column=4, padx=5, pady=10)
         self.game_buttons['instruction_button'].grid(row=2, column=1, padx=5, pady=10)
+        self.game_buttons['appearance'].grid(row=2, column=2, padx=5, pady=10)
         self.game_buttons['exit_button'].grid(row=2, column=3, padx=5, pady=10)
 
     def create_progress_bar(self, parent):
@@ -460,6 +466,7 @@ class SudokuGame:
         self.game_buttons["new_game_button"].config(state="normal") 
         self.game_buttons["reveal_button"].config(state="normal")  
         self.game_buttons["save_button"].config(state="normal")
+        self.game_buttons["appearance"].config(state="disabled")
 
     def custom_mode(self):
     # Custom mode (Input a hint and a number of grids to be removed)
@@ -515,7 +522,6 @@ class SudokuGame:
         else:
             messagebox.showwarning("Error", "Please select a valid grid size before choosing difficulty.")
             return
-        
         difficulty_select_window = tk.Toplevel()
         difficulty_select_window.geometry("550x450")
         difficulty_select_window.resizable(False, False)
@@ -530,12 +536,12 @@ class SudokuGame:
             difficulty_button.grid(row=(1 + i // 2), column=(i % 2), padx=30, pady=10)
 
     def close_window(self):
-        # Rewind New game
+        # Rewind New games
         self.game_buttons["new_game_button"].config(state="normal")
 
     def exit_game(self):
     # Exit game
-        is_quit = messagebox.askyesno("Quit", "Are you sure to quit?\nYour game progress will not be saved.")
+        is_quit = messagebox.askyesno("Quit", "Are you sure to quit?\nYour game progress will not be saved.") or root.quit()
         if (is_quit):
             self.root.destroy()
         else:
@@ -574,6 +580,35 @@ class SudokuGame:
             custom_mode_button.pack(pady=self.button_pad_y)
             custom_mode_label.pack(pady=self.button_pad_y)
             new_game_setting.protocol("WM_DELETE_WINDOW", lambda: [new_game_setting.destroy(), self.close_window()])
+
+    def change_appearence(self):
+        change_appearence_window = tk.Toplevel()
+        change_appearence_window.geometry("500x400")
+        change_appearence_window.resizable(False, False)
+        change_appearence_window.title("Change Appearance")
+        color_label = tk.Label(change_appearence_window, text="Choose Color", font=("Arial", self.font_size * 2))
+        colors = ["light blue", "light yellow", "white", "gray", "light green", "light pink"]
+        color_listbox = tk.Listbox(change_appearence_window, font=("Arial", self.font_size * 2), selectmode="multiple", height=len(colors))
+        for color in colors:
+            color_listbox.insert(tk.END, color)
+        def apply_colors():
+            try:
+                color_selection = color_listbox.curselection()
+                if (len(color_selection) == 2):
+                    self.primary_color = color_listbox.get(color_selection[0])
+                    self.secondary_color = color_listbox.get(color_selection[1])
+                    self.recreate_grid()
+                    change_appearence_window.destroy()
+                else:
+                    messagebox.showwarning("Selection Error", "Please select both a primary and secondary color.")
+            except Exception as e:
+                messagebox.showerror("Error", str(e))
+
+        color_label.pack(pady=self.button_pad_y)
+        color_listbox.pack(pady=self.button_pad_y)
+        apply_button = tk.Button(change_appearence_window, text="Apply", font=("Arial", self.font_size * 2), command=apply_colors)
+        apply_button.pack(pady=self.button_pad_y)
+        change_appearence_window.protocol("WM_DELETE_WINDOW", lambda: [self.close_window(), change_appearence_window.destroy()])
 
     def main(self):
     # Main function of Sudoku game
