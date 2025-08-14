@@ -541,7 +541,7 @@ class SudokuGame:
 
     def exit_game(self):
     # Exit game
-        is_quit = messagebox.askyesno("Quit", "Are you sure to quit?\nYour game progress will not be saved.") or root.quit()
+        is_quit = messagebox.askyesno("Quit", "Are you sure to quit?\nYour game progress will not be saved.")
         if (is_quit):
             self.root.destroy()
         else:
@@ -610,25 +610,3 @@ class SudokuGame:
         apply_button.pack(pady=self.button_pad_y)
         change_appearence_window.protocol("WM_DELETE_WINDOW", lambda: [self.close_window(), change_appearence_window.destroy()])
 
-    def main(self):
-    # Main function of Sudoku game
-        sudoku = tk.Label(self.root, text="Sudoku", font=("Arial", self.font_size * 3))
-        sudoku.pack(pady= 10)
-        self.top_frame = tk.Frame(self.root)
-        bottom_frame = tk.Frame(self.root)
-        self.top_frame.pack(side="top", pady=15, anchor="center")
-        bottom_frame.pack(side="bottom", padx=15, pady=(0, 25), anchor="center")
-        # Set up the grid and buttons
-        self.create_grid(self.top_frame) # Show Sudoku grid
-        self.create_progress_bar(bottom_frame) # Show progress bar
-        self.show_game_buttons(bottom_frame) # Show buttons  
-
-if __name__ == "__main__":
-    root = tk.Tk()
-    w, h = root.winfo_screenwidth(), root.winfo_screenheight()
-    root.geometry("%dx%d+0+0" % (w, h))
-    root.resizable(False, False)
-    root.title("SudokuGame")
-    game = SudokuGame(root)
-    game.main()
-    root.mainloop()
