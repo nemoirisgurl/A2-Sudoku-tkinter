@@ -509,21 +509,21 @@ class SudokuGame:
     def difficulty_select(self):
         if (self.GRID_SIZE == 4 or self.GRID_SIZE == 9 or self.GRID_SIZE == 16 or self.GRID_SIZE == 25): 
             removed_grid_limit = (self.GRID_SIZE ** 2) - 1 
-            easy_mode_range = (removed_grid_limit * (25 / 100), removed_grid_limit * (35 / 100) - 1)
-            medium_mode_range = ((easy_mode_range[1] + 1), removed_grid_limit * (45 / 100) - 1)
-            hard_mode_range = ((medium_mode_range[1] + 1), removed_grid_limit * (60 / 100) - 1)
-            extreme_mode_range = ((hard_mode_range[1] + 1), removed_grid_limit * (80 / 100))
+            easy_mode_range = (int(removed_grid_limit * (25 / 100)), int(removed_grid_limit * (35 / 100) - 1))
+            medium_mode_range = (int(easy_mode_range[1] + 1), int(removed_grid_limit * (45 / 100) - 1))
+            hard_mode_range = (int(medium_mode_range[1] + 1), int(removed_grid_limit * (60 / 100) - 1))
+            extreme_mode_range = (int(hard_mode_range[1] + 1), int(removed_grid_limit * (80 / 100)))
             random_mode_range = (easy_mode_range[0], extreme_mode_range[1])
-            difficulty_name = [(f"Easy removes {easy_mode_range} grids.", easy_mode_range),
-                               (f"Medium removes {medium_mode_range} grids", medium_mode_range),
-                               (f"Hard {hard_mode_range} grids", hard_mode_range),
-                               (f"Extreme {extreme_mode_range} grids", extreme_mode_range),
+            difficulty_name = [(f"Easy", easy_mode_range),
+                               (f"Medium", medium_mode_range),
+                               (f"Hard", hard_mode_range),
+                               (f"Extreme", extreme_mode_range),
                                (f"Random", random_mode_range)]
         else:
             messagebox.showwarning("Error", "Please select a valid grid size before choosing difficulty.")
             return
         difficulty_select_window = tk.Toplevel()
-        difficulty_select_window.geometry("550x450")
+        difficulty_select_window.geometry("300x250")
         difficulty_select_window.resizable(False, False)
         difficulty_select_window.title("Choose difficulty")
         difficulty_select_window.protocol("WM_DELETE_WINDOW", lambda: [self.close_window(), difficulty_select_window.destroy()])
@@ -558,7 +558,7 @@ class SudokuGame:
         grid_size_buttons = [tk.Button(grid_size_selection, text="4x4", font=("Arial", self.font_size * 2), command=lambda:[setattr(self, "GRID_SIZE", 4), setattr(self, "MINI_GRID_SIZE", 2), grid_size_selection.destroy(), mode_selection()]),
                              tk.Button(grid_size_selection, text="9x9", font=("Arial", self.font_size * 2), command=lambda:[setattr(self, "GRID_SIZE", 9), setattr(self, "MINI_GRID_SIZE", 3), grid_size_selection.destroy(), mode_selection()]),
                              tk.Button(grid_size_selection, text="16x16", font=("Arial", self.font_size * 2), command=lambda:[setattr(self, "GRID_SIZE", 16), setattr(self, "MINI_GRID_SIZE", 4), grid_size_selection.destroy(), mode_selection()]),
-                             tk.Button(grid_size_selection, text="25x25", font=("Arial", self.font_size * 2), command=lambda:[setattr(self, "GRID_SIZE", 25), setattr(self, "MINI_GRID_SIZE", 5), grid_size_selection.destroy(), mode_selection()])]
+                             tk.Button(grid_size_selection, text="25x25", font=("Arial", self.font_size * 2), command=lambda:[setattr(self, "GRID_SIZE", 25), setattr(self, "MINI_GRID_SIZE", 5), grid_size_selection.destroy(), mode_selection()], state="disabled")]
         grid_size_selection_label.pack(pady=self.button_pad_y * 2)
         for button in grid_size_buttons:
             button.pack(pady=self.button_pad_y)
